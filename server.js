@@ -16,7 +16,6 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/chat", async (req, res) => {
-
     const { message, model } = req.body;
 
     if (!message) {
@@ -32,7 +31,6 @@ app.post("/api/chat", async (req, res) => {
     }
 
     try {
-
         const response = await fetch(
             "https://openrouter.ai/api/v1/chat/completions",
             {
@@ -41,26 +39,25 @@ app.post("/api/chat", async (req, res) => {
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization":
-                        `Bearer ${process.env.OPENROUTER_API_KEY}`
+                        `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    "HTTP-Referer":
+                        "https://akshuchauhan470-netizen.github.io/akshu-ai/",
+                    "X-Title": "Akshu AI"
                 },
 
                 body: JSON.stringify({
-
                     model: model || "openrouter/free",
 
                     messages: [
-
                         {
                             role: "system",
                             content:
-                                "You are Akshu AI. Always answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate and English words where they sound natural. Do not give unnecessarily formal or fully English answers unless the user specifically asks for English. Keep answers clear, friendly and easy to understand."
+                                "You are Akshu AI. Always answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate and English words where they sound natural. Keep answers clear, friendly and easy to understand."
                         },
-
                         {
                             role: "user",
                             content: message
                         }
-
                     ]
                 })
             }
@@ -69,39 +66,39 @@ app.post("/api/chat", async (req, res) => {
         const data = await response.json();
 
         if (!response.ok) {
+            console.error("OpenRouter error:", data);
 
             return res.status(response.status).json({
                 error:
                     data.error?.message ||
-                    "AI request failed"
+                    "OpenRouter request failed"
             });
-
         }
 
         const reply =
             data.choices?.[0]?.message?.content;
 
-        res.json({
-            reply:
-                reply ||
-                "AI ने कोई जवाब नहीं दिया।"
+        if (!reply) {
+            return res.status(500).json({
+                error: "AI ने कोई जवाब नहीं दिया।"
+            });
+        }
+
+        return res.json({
+            reply: reply
         });
 
     } catch (error) {
+        console.error("Server error:", error);
 
-        console.error(error);
-
-        res.status(500).json({
+        return res.status(500).json({
             error: "AI connection failed"
         });
     }
 });
 
+const PORT = process.env.PORT || 3000;
 
-app.listen(3000, () => {
-
-    console.log(
-        "Akshu AI running at http://localhost:3000"
-    );
-
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Akshu AI running on port ${PORT}`);
 });
