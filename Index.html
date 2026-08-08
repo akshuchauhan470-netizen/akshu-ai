@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Akshu AI</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #0b0b0f;
+    color: white;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* HEADER */
+
+.header {
+    height: 65px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 15px;
+    border-bottom: 1px solid #292933;
+    background: #111116;
+}
+
+.menu-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.logo {
+    font-size: 21px;
+    font-weight: bold;
+    flex: 1;
+}
+
+.logo span {
+    color: #7c5cff;
+}
+
+.model-select {
+    max-width: 150px;
+    background: #1b1b22;
+    color: white;
+    border: 1px solid #33333d;
+    border-radius: 9px;
+    padding: 9px;
+    outline: none;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    background: #111116;
+    border-right: 1px solid #292933;
+    padding: 20px;
+    z-index: 1000;
+    transition: 0.25s;
+}
+
+.sidebar.open {
+    left: 0;
+}
+
+.sidebar-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 25px;
+}
+
+.sidebar-title span {
+    color: #7c5cff;
+}
+
+.close-btn {
+    float: right;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.new-chat {
+    width: 100%;
+    padding: 13px;
+    border-radius: 10px;
+    border: 1px solid #363640;
+    background: #1d1d25;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.sidebar-info {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #292933;
+}
+
+.sidebar-info p {
+    margin-bottom: 8px;
+}
+
+.sidebar-info small {
+    color: #9999a5;
+}
+
+/* CHAT */
+
+.chat {
+    height: calc(100vh - 65px);
+    overflow-y: auto;
+    padding: 25px 15px 100px;
+}
+
+.welcome {
+    max-width: 700px;
+    margin: 100px auto;
+    text-align: center;
+}
+
+.welcome h1 {
+    font-size: 34px;
+    margin-bottom: 12px;
+}
+
+.welcome h1 span {
+    color: #7c5cff;
+}
+
+.welcome p {
+    color: #9999a5;
+}
+
+/* MESSAGE */
+
+.message {
+    max-width: 750px;
+    margin: 15px auto;
+    padding: 14px 16px;
+    border-radius: 15px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.user {
+    background: #202027;
+}
+
+.ai {
+    background: #15151b;
+    border: 1px solid #292933;
+}
+
+/* INPUT */
+
+.input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, #0b0b0f 25%);
+}
+
+.input-box {
+    max-width: 750px;
+    margin: auto;
+    display: flex;
+    gap: 8px;
+    background: #19191f;
+    border: 1px solid #30303a;
+    border-radius: 15px;
+    padding: 8px;
+}
+
+#messageInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 15px;
+    padding: 10px;
+}
+
+#sendBtn,
+#stopBtn {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 19px;
+    cursor: pointer;
+}
+
+#sendBtn {
+    background: #7c5cff;
+}
+
+#sendBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* STOP BUTTON */
+
+#stopBtn {
+    display: none;
+    background: #ff4d4d;
+}
+
+#stopBtn.active {
+    display: block;
+}
+
+/* MOBILE */
+
+@media(max-width:600px) {
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .model-select {
+        max-width: 125px;
+        font-size: 12px;
+    }
+
+    .welcome h1 {
+        font-size: 27px;
+    }
+
+    .message {
+        max-width: 95%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+
+<aside class="sidebar" id="sidebar">
+
+    <button class="close-btn" id="closeBtn">✕</button>
+
+    <div class="sidebar-title">
+        <span>Akshu</span> AI
+    </div>
+
+    <button class="new-chat" id="newChatBtn">
+        ＋ New Chat
+    </button>
+
+    <div class="sidebar-info">
+        <p>🤖 AI Models</p>
+        <small>Free models will appear here.</small>
+    </div>
+
+    <div class="sidebar-info">
+        <p>💬 Chat History</p>
+        <small>Your chats are saved on this device.</small>
+    </div>
+
+</aside>
+
+
+<!-- HEADER -->
+
+<header class="header">
+
+    <button class="menu-btn" id="menuBtn">
+        ☰
+    </button>
+
+    <div class="logo">
+        <span>Akshu</span> AI
+    </div>
+
+    <select class="model-select" id="modelSelect">
+        <option value="openrouter/free">
+            Free AI
+        </option>
+    </select>
+
+</header>
+
+
+<!-- CHAT -->
+
+<main class="chat" id="chat">
+
+    <div class="welcome" id="welcome">
+
+        <h1>
+            Welcome to <span>Akshu AI</span>
+        </h1>
+
+        <p>
+            Ask anything and get an AI-powered answer.
+        </p>
+
+    </div>
+
+</main>
+
+
+<!-- INPUT -->
+
+<div class="input-area">
+
+    <div class="input-box">
+
+        <input
+            id="messageInput"
+            type="text"
+            placeholder="Message Akshu AI..."
+            autocomplete="off"
+        >
+
+        <button id="sendBtn">
+            ➤
+        </button>
+
+        <button id="stopBtn">
+            ■
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const input =
+    document.getElementById("messageInput");
+
+const sendBtn =
+    document.getElementById("sendBtn");
+
+const stopBtn =
+    document.getElementById("stopBtn");
+
+const chat =
+    document.getElementById("chat");
+
+const welcome =
+    document.getElementById("welcome");
+
+const modelSelect =
+    document.getElementById("modelSelect");
+
+const sidebar =
+    document.getElementById("sidebar");
+
+const menuBtn =
+    document.getElementById("menuBtn");
+
+const closeBtn =
+    document.getElementById("closeBtn");
+
+const newChatBtn =
+    document.getElementById("newChatBtn");
+
+
+/* STOP CONTROL */
+
+let stopTyping = false;
+
+
+/* SIDEBAR */
+
+menuBtn.onclick = () => {
+    sidebar.classList.add("open");
+};
+
+closeBtn.onclick = () => {
+    sidebar.classList.remove("open");
+};
+
+
+/* NEW CHAT */
+
+newChatBtn.onclick = () => {
+
+    chat.innerHTML = `
+        <div class="welcome" id="welcome">
+            <h1>
+                Welcome to <span>Akshu AI</span>
+            </h1>
+
+            <p>
+                Ask anything and get an AI-powered answer.
+            </p>
+        </div>
+    `;
+
+    localStorage.removeItem("akshuChat");
+
+    stopTyping = true;
+
+    stopBtn.classList.remove("active");
+
+    sendBtn.disabled = false;
+
+    sidebar.classList.remove("open");
+};
+
+
+/* SEND MESSAGE */
+
+async function sendMessage() {
+
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    if (sendBtn.disabled) return;
+
+    const currentWelcome =
+        document.getElementById("welcome");
+
+    if (currentWelcome) {
+        currentWelcome.style.display = "none";
+    }
+
+
+    /* USER MESSAGE */
+
+    const userMessage =
+        document.createElement("div");
+
+    userMessage.className =
+        "message user";
+
+    userMessage.textContent =
+        text;
+
+    chat.appendChild(userMessage);
+
+    input.value = "";
+
+
+    /* BUTTON STATE */
+
+    sendBtn.disabled = true;
+
+    stopTyping = false;
+
+    stopBtn.classList.add("active");
+
+
+    /* SAVE USER CHAT */
+
+    let history =
+        JSON.parse(
+            localStorage.getItem("akshuChat")
+        ) || [];
+
+    history.push({
+        role: "user",
+        content: text
+    });
+
+    localStorage.setItem(
+        "akshuChat",
+        JSON.stringify(history)
+    );
+
+
+    /* AI LOADING */
+
+    const aiMessage =
+        document.createElement("div");
+
+    aiMessage.className =
+        "message ai";
+
+    aiMessage.textContent =
+        "Thinking...";
+
+    chat.appendChild(aiMessage);
+
+    chat.scrollTop =
+        chat.scrollHeight;
+
+
+    try {
+
+        const response =
+            await fetch(
+                "http://localhost:3000/api/chat",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        message: text,
+
+                        model:
+                            modelSelect.value
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "AI request failed"
+            );
+
+        }
+
+
+        const reply =
+            data.reply ||
+            "No response received.";
+
+
+        /* TYPING ANIMATION */
+
+        aiMessage.textContent = "";
+
+        for (let i = 0; i < reply.length; i++) {
+
+            if (stopTyping) {
+                break;
+            }
+
+            aiMessage.textContent +=
+                reply[i];
+
+            chat.scrollTop =
+                chat.scrollHeight;
+
+            await new Promise(resolve =>
+                setTimeout(resolve, 15)
+            );
+        }
+
+
+        /* SAVE AI CHAT */
+
+        history.push({
+            role: "assistant",
+            content: aiMessage.textContent
+        });
+
+        localStorage.setItem(
+            "akshuChat",
+            JSON.stringify(history)
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        if (!stopTyping) {
+
+            aiMessage.textContent =
+                "❌ AI connection failed.";
+
+        }
+
+    }
+
+
+    /* RESET BUTTONS */
+
+    sendBtn.disabled = false;
+
+    stopBtn.classList.remove("active");
+
+    chat.scrollTop =
+        chat.scrollHeight;
+}
+
+
+/* STOP BUTTON */
+
+stopBtn.onclick = () => {
+
+    stopTyping = true;
+
+    stopBtn.classList.remove("active");
+
+    sendBtn.disabled = false;
+};
+
+
+/* SEND BUTTON */
+
+sendBtn.onclick =
+    sendMessage;
+
+
+/* ENTER */
+
+input.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (event.key === "Enter") {
+
+            sendMessage();
+
+        }
+
+    }
+);
+
+
+/* LOAD MODELS */
+
+async function loadModels() {
+
+    try {
+
+        const response =
+            await fetch(
+                "http://localhost:3000/api/models"
+            );
+
+        const models =
+            await response.json();
+
+
+        if (!Array.isArray(models) ||
+            models.length === 0) {
+
+            return;
+        }
+
+
+        modelSelect.innerHTML = "";
+
+
+        models.forEach(model => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                model.id;
+
+            option.textContent =
+                model.name;
+
+            modelSelect.appendChild(
+                option
+            );
+
+        });
+
+    } catch (error) {
+
+        console.log(
+            "Could not load models"
+        );
+
+    }
+}
+
+
+/* LOAD HISTORY */
+
+function loadHistory() {
+
+    const history =
+        JSON.parse(
+            localStorage.getItem("akshuChat")
+        ) || [];
+
+
+    if (history.length === 0) {
+        return;
+    }
+
+
+    const currentWelcome =
+        document.getElementById("welcome");
+
+    if (currentWelcome) {
+
+        currentWelcome.style.display =
+            "none";
+
+    }
+
+
+    history.forEach(item => {
+
+        const message =
+            document.createElement("div");
+
+        message.className =
+            item.role === "user"
+                ? "message user"
+                : "message ai";
+
+        message.textContent =
+            item.content;
+
+        chat.appendChild(message);
+
+    });
+
+
+    chat.scrollTop =
+        chat.scrollHeight;
+}
+
+
+/* START */
+
+loadModels();
+
+loadHistory();
+
+</script>
+
+</body>
+</html>
