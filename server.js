@@ -1,177 +1,97 @@
-require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
+
+const PORT = process.env.PORT || 10000;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.OPENROUTER_API_KEY;
+/* =========================
+   SERVE FRONTEND
+========================= */
 
-const OPENROUTER_URL =
-    "https://openrouter.ai/api/v1/chat/completions";
-
-const MODELS_URL =
-    "https://openrouter.ai/api/v1/models";
-
+app.use(express.static(path.join(__dirname, "public")));
 
 /* =========================
    HOME
 ========================= */
 
 app.get("/", (req, res) => {
-
-    res.json({
-        status: "online",
-        message: "Akshu AI Backend is running 🚀"
-    });
-
+    res.sendFile(
+        path.join(__dirname, "public", "index.html")
+    );
 });
-
 
 /* =========================
    MODELS
 ========================= */
 
-app.get("/api/models", async (req, res) => {
+app.get("/api/models", (req, res) => {
+
+    const models = [
+
+        {
+            id: "openrouter/free",
+            name: "Free AI"
+        },
+
+        {
+            id: "openai/gpt-5.6",
+            name: "GPT-5.6"
+        },
+
+        {
+            id: "google/gemini-3.1-flash-lite",
+            name: "Gemini 3.1 Flash Lite"
+        },
+
+        {
+            id: "anthropic/claude-sonnet-4.5",
+            name: "Claude Sonnet"
+        }
+
+    ];
+
+    res.json(models);
+
+});
+
+/* =========================
+   AI CHAT
+========================= */
+
+app.post("/api/chat", async (req, res) => {
 
     try {
 
-        const response = await fetch(
-            MODELS_URL
-        );
+        const message = req.body.message;
+        const model = req.body.model || "openrouter/free";
 
-        const data =
-            await response.json();
+        if (!message) {
 
-        if (!response.ok) {
-
-            return res.status(
-                response.status
-            ).json({
-                error:
-                    data?.error?.message ||
-                    "Could not load models"
+            return res.status(400).json({
+                error: "Message is required"
             });
 
         }
 
-        const models =
-            (data.data || [])
-                .filter(model => model.id)
-                .map(model => ({
-                    id: model.id,
-                    name:
-                        model.name ||
-                        model.id
-                }));
+        if (!OPENROUTER_API_KEY) {
 
-        res.json(models);
+            return res.status(500).json({
+                error: "OPENROUTER_API_KEY is missing"
+            });
 
-    } catch (error) {
-
-        console.error(
-            "MODELS ERROR:",
-            error
-        );
-
-        res.status(500).json({
-            error:
-                error.message ||
-                "Could not load models"
-        });
-
-    }
-
-});
-
-
-/* =========================
-   GET FREE MODELS
-========================= */
-
-async function getFreeModels() {
-
-    try {
-
-        const response =
-            await fetch(
-                MODELS_URL
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-            return [];
         }
 
-        return (data.data || [])
-            .filter(model => {
+        console.log("User message:", message);
+        console.log("Selected model:", model);
 
-                const id =
-                    String(model.id || "")
-                        .toLowerCase();
-
-                const pricing =
-                    model.pricing || {};
-
-                const promptPrice =
-                    Number(
-                        pricing.prompt || 0
-                    );
-
-                const completionPrice =
-                    Number(
-                        pricing.completion || 0
-                    );
-
-                return (
-                    id.includes(":free") ||
-                    (
-                        promptPrice === 0 &&
-                        completionPrice === 0
-                    )
-                );
-
-            })
-            .map(model => model.id)
-            .filter(Boolean);
-
-    } catch (error) {
-
-        console.error(
-            "FREE MODEL ERROR:",
-            error
-        );
-
-        return [];
-
-    }
-
-}
-
-
-/* =========================
-   ASK OPENROUTER
-========================= */
-
-async function askAI(
-    model,
-    message
-) {
-
-    console.log(
-        "Trying model:",
-        model
-    );
-
-    const response =
-        await fetch(
-            OPENROUTER_URL,
+        const response = await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
             {
 
                 method: "POST",
@@ -182,7 +102,7 @@ async function askAI(
                         "application/json",
 
                     "Authorization":
-                        `Bearer ${API_KEY}`,
+                        `Bearer ${OPENROUTER_API_KEY}`,
 
                     "HTTP-Referer":
                         "https://akshu-ai.onrender.com",
@@ -192,176 +112,102 @@ async function askAI(
 
                 },
 
-                body:
-                    JSON.stringify({
+                body: JSON.stringify({
 
-                        model: model,
+                    model: model,
 
-                        messages: [
+                    messages: [
 
-                            {
-                                role:
-                                    "system",
+                        {
+                            role: "user",
+                            content: message
+                        }
 
-                                content:
-                                    "You are Akshu AI. Answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate. Keep answers clear, friendly and easy to understand."
-                            },
+                    ]
 
-                            {
-                                role:
-                                    "user",
-
-                                content:
-                                    message
-                            }
-
-                        ]
-
-                    })
+                })
 
             }
         );
 
+        const data = await response.json();
 
-    const data =
-        await response.json();
+        console.log(
+            "OpenRouter status:",
+            response.status
+        );
 
+        console.log(
+            "OpenRouter response:",
+            JSON.stringify(data)
+        );
 
-    return {
-        response,
-        data
-    };
+        if (!response.ok) {
 
-}
+            return res.status(response.status).json({
 
+                error:
+                    data?.error?.message ||
+                    data?.error ||
+                    "OpenRouter request failed",
+
+                details: data
+
+            });
+
+        }
+
+        const reply =
+            data?.choices?.[0]?.message?.content ||
+            "No response received.";
+
+        return res.json({
+
+            reply: reply
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "SERVER ERROR:",
+            error
+        );
+
+        return res.status(500).json({
+
+            error:
+                error.message ||
+                "Internal server error"
+
+        });
+
+    }
+
+});
 
 /* =========================
-   CHAT
+   404
 ========================= */
 
-app.post(
-    "/api/chat",
-    async (req, res) => {
+app.use((req, res) => {
 
-        try {
+    res.status(404).json({
 
-            const {
-                message,
-                model
-            } = req.body;
+        error: "Route not found"
 
+    });
 
-            /* MESSAGE CHECK */
+});
 
-            if (
-                !message ||
-                typeof message !== "string"
-            ) {
+/* =========================
+   START SERVER
+========================= */
 
-                return res.status(400).json({
-                    error:
-                        "Message is required"
-                });
+app.listen(PORT, "0.0.0.0", () => {
 
-            }
+    console.log(
+        `Akshu AI running on port ${PORT}`
+    );
 
-
-            /* API KEY CHECK */
-
-            if (!API_KEY) {
-
-                return res.status(500).json({
-                    error:
-                        "OPENROUTER_API_KEY is missing"
-                });
-
-            }
-
-
-            /*
-             * FIRST TRY:
-             * USER SELECTED MODEL
-             */
-
-            const modelsToTry = [];
-
-
-            if (model) {
-
-                modelsToTry.push(
-                    model
-                );
-
-            }
-
-
-            /*
-             * SECOND:
-             * OPENROUTER FREE ROUTER
-             */
-
-            if (
-                !modelsToTry.includes(
-                    "openrouter/free"
-                )
-            ) {
-
-                modelsToTry.push(
-                    "openrouter/free"
-                );
-
-            }
-
-
-            /*
-             * THIRD:
-             * OTHER FREE MODELS
-             */
-
-            const freeModels =
-                await getFreeModels();
-
-
-            for (
-                const freeModel
-                of freeModels
-            ) {
-
-                if (
-                    !modelsToTry.includes(
-                        freeModel
-                    )
-                ) {
-
-                    modelsToTry.push(
-                        freeModel
-                    );
-
-                }
-
-            }
-
-
-            console.log(
-                "Models to try:",
-                modelsToTry
-            );
-
-
-            /* =========================
-               TRY MODELS ONE BY ONE
-            ========================= */
-
-            let lastError =
-                "AI request failed";
-
-
-            for (
-                const currentModel
-                of modelsToTry
-            ) {
-
-                try {
-
-                    const result =
-                        await askAI
+});
