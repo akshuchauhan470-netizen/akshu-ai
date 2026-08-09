@@ -355,6 +355,43 @@ body {
 
 <script>
 
+const voiceBtn = document.getElementById("voiceBtn");
+const input = document.getElementById("messageInput");
+
+const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "hi-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    voiceBtn.addEventListener("click", () => {
+        recognition.start();
+        voiceBtn.textContent = "🎙️ सुन रहा हूँ...";
+    });
+
+    recognition.onresult = (event) => {
+        input.value = event.results[0][0].transcript;
+        voiceBtn.textContent = "🎙️ बोलें";
+    };
+
+    recognition.onerror = () => {
+        voiceBtn.textContent = "🎙️ बोलें";
+    };
+
+    recognition.onend = () => {
+        voiceBtn.textContent = "🎙️ बोलें";
+    };
+
+} else {
+    voiceBtn.disabled = true;
+    voiceBtn.textContent = "🎙️ Voice unavailable";
+    }
+    
 const input =
     document.getElementById("messageInput");
 
