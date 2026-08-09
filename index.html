@@ -355,7 +355,11 @@ body {
 
 <script>
 
-const voiceBtn = document.getElementById("voiceBtn");
+const voiceBtn = document.getElementById("voiceBtn");const voiceBtn = document.getElementById("voiceBtn");
+
+voiceBtn.addEventListener("click", () => {
+    alert("Voice button काम कर रहा है!");
+});
 const input = document.getElementById("messageInput");
 
 const SpeechRecognition =
