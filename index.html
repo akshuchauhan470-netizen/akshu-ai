@@ -1078,20 +1078,70 @@ async function sendMessage() {
             "No response received.";
 
 
-        /* =========================
-           AI VOICE
-        ========================= */
+/* =========================
+   AI VOICE - EMOJI FILTER
+========================= */
+
+if (
+    "speechSynthesis" in window &&
+    "SpeechSynthesisUtterance" in window
+) {
+
+    window.speechSynthesis.cancel();
+
+    const speechText = reply
+        .replace(
+            /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu,
+            ""
+        )
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (speechText) {
+
+        const speech =
+            new SpeechSynthesisUtterance(
+                speechText
+            );
+
+        speech.rate = 1;
+        speech.pitch = 1;
+
+        const selectedVoiceIndex =
+            voiceSelect.value;
 
         if (
-
-            "speechSynthesis"
-            in window &&
-
-            "SpeechSynthesisUtterance"
-            in window
-
+            selectedVoiceIndex !== ""
         ) {
 
+            const selectedVoice =
+                availableVoices[
+                    Number(
+                        selectedVoiceIndex
+                    )
+                ];
+
+            if (selectedVoice) {
+
+                speech.voice =
+                    selectedVoice;
+
+                speech.lang =
+                    selectedVoice.lang;
+
+            }
+
+        } else {
+
+            speech.lang = "hi-IN";
+
+        }
+
+        window.speechSynthesis.speak(
+            speech
+        );
+    }
+    }
 
             window.speechSynthesis
                 .cancel();
