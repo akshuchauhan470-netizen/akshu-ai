@@ -1,12 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
 <title>Akshu AI</title>
 
+
 <style>
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -21,13 +29,16 @@ body {
     overflow: hidden;
 }
 
-/* HEADER */
+
+/* =========================
+   HEADER
+========================= */
 
 .header {
     height: 65px;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     padding: 0 15px;
     border-bottom: 1px solid #292933;
     background: #111116;
@@ -51,8 +62,12 @@ body {
     color: #7c5cff;
 }
 
-.model-select {
-    max-width: 150px;
+
+/* MODEL + VOICE DROPDOWNS */
+
+.model-select,
+.voice-select {
+    max-width: 160px;
     background: #1b1b22;
     color: white;
     border: 1px solid #33333d;
@@ -61,7 +76,14 @@ body {
     outline: none;
 }
 
-/* SIDEBAR */
+.voice-select {
+    max-width: 180px;
+}
+
+
+/* =========================
+   SIDEBAR
+========================= */
 
 .sidebar {
     position: fixed;
@@ -124,7 +146,10 @@ body {
     color: #9999a5;
 }
 
-/* CHAT */
+
+/* =========================
+   CHAT
+========================= */
 
 .chat {
     height: calc(100vh - 65px);
@@ -151,7 +176,10 @@ body {
     color: #9999a5;
 }
 
-/* MESSAGE */
+
+/* =========================
+   MESSAGE
+========================= */
 
 .message {
     max-width: 750px;
@@ -172,7 +200,10 @@ body {
     border: 1px solid #292933;
 }
 
-/* INPUT */
+
+/* =========================
+   INPUT
+========================= */
 
 .input-area {
     position: fixed;
@@ -180,7 +211,10 @@ body {
     left: 0;
     right: 0;
     padding: 12px;
-    background: linear-gradient(transparent, #0b0b0f 25%);
+    background: linear-gradient(
+        transparent,
+        #0b0b0f 25%
+    );
 }
 
 .input-box {
@@ -196,6 +230,7 @@ body {
 
 #messageInput {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;
@@ -205,13 +240,14 @@ body {
 }
 
 #sendBtn,
-#stopBtn {
-    width: 45px;
+#stopBtn,
+#voiceBtn {
+    min-width: 45px;
     height: 45px;
     border: none;
     border-radius: 12px;
     color: white;
-    font-size: 19px;
+    font-size: 18px;
     cursor: pointer;
 }
 
@@ -224,7 +260,14 @@ body {
     cursor: not-allowed;
 }
 
-/* STOP BUTTON */
+#voiceBtn {
+    background: #29293a;
+    padding: 0 10px;
+}
+
+#voiceBtn.listening {
+    background: #7c5cff;
+}
 
 #stopBtn {
     display: none;
@@ -235,17 +278,30 @@ body {
     display: block;
 }
 
-/* MOBILE */
 
-@media(max-width:600px) {
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width: 700px) {
+
+    .header {
+        gap: 6px;
+        padding: 0 8px;
+    }
 
     .logo {
-        font-size: 18px;
+        font-size: 17px;
     }
 
     .model-select {
-        max-width: 125px;
-        font-size: 12px;
+        max-width: 105px;
+        font-size: 11px;
+    }
+
+    .voice-select {
+        max-width: 105px;
+        font-size: 11px;
     }
 
     .welcome h1 {
@@ -255,68 +311,161 @@ body {
     .message {
         max-width: 95%;
     }
+
+    #voiceBtn {
+        font-size: 16px;
+        min-width: 45px;
+    }
+
 }
+
 </style>
+
 </head>
+
 
 <body>
 
-<!-- SIDEBAR -->
 
-<aside class="sidebar" id="sidebar">
+<!-- =========================
+     SIDEBAR
+========================= -->
 
-    <button class="close-btn" id="closeBtn">✕</button>
+<aside
+    class="sidebar"
+    id="sidebar"
+>
+
+    <button
+        class="close-btn"
+        id="closeBtn"
+    >
+        ✕
+    </button>
+
 
     <div class="sidebar-title">
+
         <span>Akshu</span> AI
+
     </div>
 
-    <button class="new-chat" id="newChatBtn">
+
+    <button
+        class="new-chat"
+        id="newChatBtn"
+    >
         ＋ New Chat
     </button>
 
-    <div class="sidebar-info">
-        <p>🤖 AI Models</p>
-        <small>Free models will appear here.</small>
-    </div>
 
     <div class="sidebar-info">
+
+        <p>🤖 AI Models</p>
+
+        <small>
+            Models are loaded from OpenRouter.
+        </small>
+
+    </div>
+
+
+    <div class="sidebar-info">
+
+        <p>🔊 Voices</p>
+
+        <small>
+            Voices available on your device.
+        </small>
+
+    </div>
+
+
+    <div class="sidebar-info">
+
         <p>💬 Chat History</p>
-        <small>Your chats are saved on this device.</small>
+
+        <small>
+            Your chats are saved on this device.
+        </small>
+
     </div>
 
 </aside>
 
 
-<!-- HEADER -->
+
+<!-- =========================
+     HEADER
+========================= -->
 
 <header class="header">
 
-    <button class="menu-btn" id="menuBtn">
+
+    <button
+        class="menu-btn"
+        id="menuBtn"
+    >
         ☰
     </button>
 
+
     <div class="logo">
+
         <span>Akshu</span> AI
+
     </div>
 
-    <select class="model-select" id="modelSelect">
+
+    <!-- MODEL DROPDOWN -->
+
+    <select
+        class="model-select"
+        id="modelSelect"
+    >
+
         <option value="openrouter/free">
             Free AI
         </option>
+
     </select>
+
+
+    <!-- VOICE DROPDOWN -->
+
+    <select
+        class="voice-select"
+        id="voiceSelect"
+    >
+
+        <option value="">
+            Default Voice
+        </option>
+
+    </select>
+
 
 </header>
 
 
-<!-- CHAT -->
 
-<main class="chat" id="chat">
+<!-- =========================
+     CHAT
+========================= -->
 
-    <div class="welcome" id="welcome">
+<main
+    class="chat"
+    id="chat"
+>
+
+    <div
+        class="welcome"
+        id="welcome"
+    >
 
         <h1>
-            Welcome to <span>Akshu AI</span>
+            Welcome to
+            <span>Akshu AI</span>
         </h1>
 
         <p>
@@ -328,11 +477,15 @@ body {
 </main>
 
 
-<!-- INPUT -->
+
+<!-- =========================
+     INPUT
+========================= -->
 
 <div class="input-area">
 
     <div class="input-box">
+
 
         <input
             id="messageInput"
@@ -341,51 +494,109 @@ body {
             autocomplete="off"
         >
 
-        <button id="sendBtn" type="button">➤</button>
 
-<button id="voiceBtn" type="button">🎙️ बोलें</button>
-        <button id="stopBtn">
+        <!-- SEND -->
+
+        <button
+            id="sendBtn"
+            type="button"
+        >
+            ➤
+        </button>
+
+
+        <!-- VOICE INPUT -->
+
+        <button
+            id="voiceBtn"
+            type="button"
+        >
+            🎙️
+        </button>
+
+
+        <!-- STOP -->
+
+        <button
+            id="stopBtn"
+            type="button"
+        >
             ■
         </button>
+
 
     </div>
 
 </div>
 
 
+
 <script>
 
+
+/* =========================
+   ELEMENTS
+========================= */
+
 const voiceBtn =
-    document.getElementById("voiceBtn");
+    document.getElementById(
+        "voiceBtn"
+    );
+
+const voiceSelect =
+    document.getElementById(
+        "voiceSelect"
+    );
 
 const input =
-    document.getElementById("messageInput");
+    document.getElementById(
+        "messageInput"
+    );
 
 const sendBtn =
-    document.getElementById("sendBtn");
+    document.getElementById(
+        "sendBtn"
+    );
 
 const stopBtn =
-    document.getElementById("stopBtn");
+    document.getElementById(
+        "stopBtn"
+    );
 
 const chat =
-    document.getElementById("chat");
+    document.getElementById(
+        "chat"
+    );
 
 const modelSelect =
-    document.getElementById("modelSelect");
+    document.getElementById(
+        "modelSelect"
+    );
 
 const sidebar =
-    document.getElementById("sidebar");
+    document.getElementById(
+        "sidebar"
+    );
 
 const menuBtn =
-    document.getElementById("menuBtn");
+    document.getElementById(
+        "menuBtn"
+    );
 
 const closeBtn =
-    document.getElementById("closeBtn");
+    document.getElementById(
+        "closeBtn"
+    );
 
 const newChatBtn =
-    document.getElementById("newChatBtn");
+    document.getElementById(
+        "newChatBtn"
+    );
+
 
 let stopTyping = false;
+
+let availableVoices = [];
 
 
 /* =========================
@@ -396,65 +607,199 @@ const SpeechRecognition =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
 
-if (SpeechRecognition && voiceBtn) {
+
+if (
+    SpeechRecognition &&
+    voiceBtn
+) {
 
     const recognition =
         new SpeechRecognition();
 
-    recognition.lang = "hi-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
 
-    voiceBtn.addEventListener("click", () => {
+    recognition.lang =
+        "hi-IN";
 
-        try {
-            recognition.start();
+
+    recognition.continuous =
+        false;
+
+
+    recognition.interimResults =
+        false;
+
+
+    voiceBtn.addEventListener(
+        "click",
+        () => {
+
+            try {
+
+                recognition.start();
+
+                voiceBtn.classList.add(
+                    "listening"
+                );
+
+                voiceBtn.textContent =
+                    "🎙️";
+
+            } catch (error) {
+
+                console.log(
+                    error
+                );
+
+            }
+
+        }
+    );
+
+
+    recognition.onresult =
+        (event) => {
+
+            const spokenText =
+                event
+                    .results[0][0]
+                    .transcript;
+
+
+            input.value =
+                spokenText;
+
+
+            voiceBtn.classList.remove(
+                "listening"
+            );
 
             voiceBtn.textContent =
-                "🎙️ सुन रहा हूँ...";
-        } catch (error) {
-            console.log(error);
-        }
+                "🎙️";
 
-    });
+        };
 
-    recognition.onresult = (event) => {
 
-        const spokenText =
-            event.results[0][0].transcript;
+    recognition.onerror =
+        (event) => {
 
-        input.value = spokenText;
+            console.log(
+                "Voice error:",
+                event.error
+            );
 
-        voiceBtn.textContent =
-            "🎙️ बोलें";
 
-    };
+            voiceBtn.classList.remove(
+                "listening"
+            );
 
-    recognition.onerror = (event) => {
+            voiceBtn.textContent =
+                "🎙️";
 
-        console.log(
-            "Voice error:",
-            event.error
-        );
+        };
 
-        voiceBtn.textContent =
-            "🎙️ बोलें";
 
-    };
+    recognition.onend =
+        () => {
 
-    recognition.onend = () => {
+            voiceBtn.classList.remove(
+                "listening"
+            );
 
-        voiceBtn.textContent =
-            "🎙️ बोलें";
+            voiceBtn.textContent =
+                "🎙️";
 
-    };
+        };
 
-} else if (voiceBtn) {
+} else {
 
-    voiceBtn.disabled = true;
+    voiceBtn.disabled =
+        true;
 
     voiceBtn.textContent =
-        "🎙️ Voice unavailable";
+        "❌";
+
+}
+
+
+/* =========================
+   LOAD DEVICE VOICES
+========================= */
+
+function loadVoices() {
+
+    if (
+        !("speechSynthesis" in window)
+    ) {
+        return;
+    }
+
+
+    availableVoices =
+        window.speechSynthesis
+            .getVoices();
+
+
+    voiceSelect.innerHTML =
+        "";
+
+
+    const defaultOption =
+        document.createElement(
+            "option"
+        );
+
+
+    defaultOption.value =
+        "";
+
+
+    defaultOption.textContent =
+        "Default Voice";
+
+
+    voiceSelect.appendChild(
+        defaultOption
+    );
+
+
+    availableVoices.forEach(
+        (voice, index) => {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                index;
+
+
+            option.textContent =
+                `${voice.name} (${voice.lang})`;
+
+
+            voiceSelect.appendChild(
+                option
+            );
+
+        }
+    );
+
+}
+
+
+loadVoices();
+
+
+if (
+    "onvoiceschanged" in
+    window.speechSynthesis
+) {
+
+    window.speechSynthesis
+        .onvoiceschanged =
+        loadVoices;
 
 }
 
@@ -463,60 +808,81 @@ if (SpeechRecognition && voiceBtn) {
    SIDEBAR
 ========================= */
 
-if (menuBtn) {
+menuBtn.onclick =
+    () => {
 
-    menuBtn.onclick = () => {
-        sidebar.classList.add("open");
+        sidebar.classList.add(
+            "open"
+        );
+
     };
 
-}
 
-if (closeBtn) {
+closeBtn.onclick =
+    () => {
 
-    closeBtn.onclick = () => {
-        sidebar.classList.remove("open");
+        sidebar.classList.remove(
+            "open"
+        );
+
     };
-
-}
 
 
 /* =========================
    NEW CHAT
 ========================= */
 
-if (newChatBtn) {
+newChatBtn.onclick =
+    () => {
 
-    newChatBtn.onclick = () => {
 
         chat.innerHTML = `
-            <div class="welcome" id="welcome">
+
+            <div
+                class="welcome"
+                id="welcome"
+            >
+
                 <h1>
-                    Welcome to <span>Akshu AI</span>
+                    Welcome to
+                    <span>Akshu AI</span>
                 </h1>
 
                 <p>
                     Ask anything and get an AI-powered answer.
                 </p>
+
             </div>
+
         `;
 
-        localStorage.removeItem("akshuChat");
 
-        stopTyping = true;
+        localStorage.removeItem(
+            "akshuChat"
+        );
 
-        if (stopBtn) {
-            stopBtn.classList.remove("active");
-        }
 
-        sendBtn.disabled = false;
+        stopTyping =
+            true;
 
-        sidebar.classList.remove("open");
+
+        stopBtn.classList.remove(
+            "active"
+        );
+
+
+        sendBtn.disabled =
+            false;
+
+
+        sidebar.classList.remove(
+            "open"
+        );
+
 
         window.speechSynthesis.cancel();
 
     };
-
-}
 
 
 /* =========================
@@ -525,82 +891,129 @@ if (newChatBtn) {
 
 async function sendMessage() {
 
+
     const text =
         input.value.trim();
 
-    if (!text) return;
 
-    if (sendBtn.disabled) return;
+    if (!text) {
+        return;
+    }
 
 
-    /* Hide welcome */
+    if (sendBtn.disabled) {
+        return;
+    }
+
 
     const currentWelcome =
-        document.getElementById("welcome");
+        document.getElementById(
+            "welcome"
+        );
+
 
     if (currentWelcome) {
+
         currentWelcome.style.display =
             "none";
+
     }
 
 
     /* USER MESSAGE */
 
     const userMessage =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
+
 
     userMessage.className =
         "message user";
 
+
     userMessage.textContent =
         text;
 
-    chat.appendChild(userMessage);
 
-    input.value = "";
+    chat.appendChild(
+        userMessage
+    );
+
+
+    input.value =
+        "";
 
 
     /* BUTTON STATE */
 
-    sendBtn.disabled = true;
-
-    stopTyping = false;
-
-    if (stopBtn) {
-        stopBtn.classList.add("active");
-    }
+    sendBtn.disabled =
+        true;
 
 
-    /* SAVE USER MESSAGE */
+    stopTyping =
+        false;
 
-    let history =
-        JSON.parse(
-            localStorage.getItem("akshuChat")
-        ) || [];
 
-    history.push({
-        role: "user",
-        content: text
-    });
-
-    localStorage.setItem(
-        "akshuChat",
-        JSON.stringify(history)
+    stopBtn.classList.add(
+        "active"
     );
 
 
-    /* AI LOADING */
+    /* HISTORY */
+
+    let history =
+        JSON.parse(
+
+            localStorage.getItem(
+                "akshuChat"
+            )
+
+        ) || [];
+
+
+    history.push({
+
+        role:
+            "user",
+
+        content:
+            text
+
+    });
+
+
+    localStorage.setItem(
+
+        "akshuChat",
+
+        JSON.stringify(
+            history
+        )
+
+    );
+
+
+    /* AI MESSAGE */
 
     const aiMessage =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
+
 
     aiMessage.className =
         "message ai";
 
+
     aiMessage.textContent =
         "Thinking...";
 
-    chat.appendChild(aiMessage);
+
+    chat.appendChild(
+        aiMessage
+    );
+
 
     chat.scrollTop =
         chat.scrollHeight;
@@ -608,26 +1021,39 @@ async function sendMessage() {
 
     try {
 
+
         const response =
             await fetch(
+
                 "https://akshu-ai.onrender.com/api/chat",
+
                 {
-                    method: "POST",
+
+                    method:
+                        "POST",
+
 
                     headers: {
+
                         "Content-Type":
                             "application/json"
+
                     },
 
-                    body: JSON.stringify({
 
-                        message: text,
+                    body:
+                        JSON.stringify({
 
-                        model:
-                            modelSelect.value
+                            message:
+                                text,
 
-                    })
+                            model:
+                                modelSelect.value
+
+                        })
+
                 }
+
             );
 
 
@@ -638,8 +1064,10 @@ async function sendMessage() {
         if (!response.ok) {
 
             throw new Error(
+
                 data.error ||
                 "AI request failed"
+
             );
 
         }
@@ -651,28 +1079,79 @@ async function sendMessage() {
 
 
         /* =========================
-           TEXT TO SPEECH
+           AI VOICE
         ========================= */
 
         if (
-            "speechSynthesis" in window &&
-            "SpeechSynthesisUtterance" in window
+
+            "speechSynthesis"
+            in window &&
+
+            "SpeechSynthesisUtterance"
+            in window
+
         ) {
 
-            window.speechSynthesis.cancel();
+
+            window.speechSynthesis
+                .cancel();
+
 
             const speech =
                 new SpeechSynthesisUtterance(
                     reply
                 );
 
-            speech.lang = "hi-IN";
-            speech.rate = 1;
-            speech.pitch = 1;
 
-            window.speechSynthesis.speak(
-                speech
-            );
+            speech.rate =
+                1;
+
+
+            speech.pitch =
+                1;
+
+
+            const selectedVoiceIndex =
+                voiceSelect.value;
+
+
+            if (
+                selectedVoiceIndex !== ""
+            ) {
+
+
+                const selectedVoice =
+                    availableVoices[
+                        Number(
+                            selectedVoiceIndex
+                        )
+                    ];
+
+
+                if (selectedVoice) {
+
+                    speech.voice =
+                        selectedVoice;
+
+
+                    speech.lang =
+                        selectedVoice.lang;
+
+                }
+
+
+            } else {
+
+                speech.lang =
+                    "hi-IN";
+
+            }
+
+
+            window.speechSynthesis
+                .speak(
+                    speech
+                );
 
         }
 
@@ -681,30 +1160,46 @@ async function sendMessage() {
            TYPING ANIMATION
         ========================= */
 
-        aiMessage.textContent = "";
+        aiMessage.textContent =
+            "";
+
 
         for (
+
             let i = 0;
+
             i < reply.length;
+
             i++
+
         ) {
+
 
             if (stopTyping) {
                 break;
             }
 
+
             aiMessage.textContent +=
                 reply[i];
+
 
             chat.scrollTop =
                 chat.scrollHeight;
 
+
             await new Promise(
+
                 resolve =>
+
                     setTimeout(
+
                         resolve,
+
                         15
+
                     )
+
             );
 
         }
@@ -713,23 +1208,35 @@ async function sendMessage() {
         /* SAVE AI MESSAGE */
 
         history.push({
-            role: "assistant",
+
+            role:
+                "assistant",
+
             content:
                 aiMessage.textContent
+
         });
 
+
         localStorage.setItem(
+
             "akshuChat",
-            JSON.stringify(history)
+
+            JSON.stringify(
+                history
+            )
+
         );
 
 
     } catch (error) {
 
+
         console.error(
             "AI Error:",
             error
         );
+
 
         if (!stopTyping) {
 
@@ -741,13 +1248,16 @@ async function sendMessage() {
     }
 
 
-    /* RESET BUTTONS */
+    /* RESET */
 
-    sendBtn.disabled = false;
+    sendBtn.disabled =
+        false;
 
-    if (stopBtn) {
-        stopBtn.classList.remove("active");
-    }
+
+    stopBtn.classList.remove(
+        "active"
+    );
+
 
     chat.scrollTop =
         chat.scrollHeight;
@@ -756,26 +1266,30 @@ async function sendMessage() {
 
 
 /* =========================
-   STOP BUTTON
+   STOP
 ========================= */
 
-if (stopBtn) {
+stopBtn.onclick =
+    () => {
 
-    stopBtn.onclick = () => {
 
-        stopTyping = true;
+        stopTyping =
+            true;
+
 
         stopBtn.classList.remove(
             "active"
         );
 
-        sendBtn.disabled = false;
 
-        window.speechSynthesis.cancel();
+        sendBtn.disabled =
+            false;
+
+
+        window.speechSynthesis
+            .cancel();
 
     };
-
-}
 
 
 /* =========================
@@ -787,22 +1301,30 @@ sendBtn.onclick =
 
 
 /* =========================
-   ENTER KEY
+   ENTER
 ========================= */
 
 input.addEventListener(
-    "keydown",
-    function(event) {
 
-        if (event.key === "Enter") {
+    "keydown",
+
+    (event) => {
+
+
+        if (
+            event.key === "Enter"
+        ) {
+
 
             event.preventDefault();
+
 
             sendMessage();
 
         }
 
     }
+
 );
 
 
@@ -812,20 +1334,29 @@ input.addEventListener(
 
 async function loadModels() {
 
+
     try {
+
 
         const response =
             await fetch(
+
                 "https://akshu-ai.onrender.com/api/models"
+
             );
+
 
         const models =
             await response.json();
 
 
         if (
-            !Array.isArray(models) ||
+            !Array.isArray(
+                models
+            ) ||
+
             models.length === 0
+
         ) {
 
             return;
@@ -833,34 +1364,44 @@ async function loadModels() {
         }
 
 
-        modelSelect.innerHTML = "";
+        modelSelect.innerHTML =
+            "";
 
 
-        models.forEach(model => {
+        models.forEach(
+            model => {
 
-            const option =
-                document.createElement(
-                    "option"
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+
+                option.value =
+                    model.id;
+
+
+                option.textContent =
+                    model.name;
+
+
+                modelSelect.appendChild(
+                    option
                 );
 
-            option.value =
-                model.id;
-
-            option.textContent =
-                model.name;
-
-            modelSelect.appendChild(
-                option
-            );
-
-        });
+            }
+        );
 
 
     } catch (error) {
 
+
         console.log(
-            "Could not load models"
+            "Could not load models:",
+            error
         );
+
 
     }
 
@@ -868,21 +1409,28 @@ async function loadModels() {
 
 
 /* =========================
-   LOAD CHAT HISTORY
+   LOAD HISTORY
 ========================= */
 
 function loadHistory() {
 
+
     const history =
         JSON.parse(
+
             localStorage.getItem(
                 "akshuChat"
             )
+
         ) || [];
 
 
-    if (history.length === 0) {
+    if (
+        history.length === 0
+    ) {
+
         return;
+
     }
 
 
@@ -890,6 +1438,7 @@ function loadHistory() {
         document.getElementById(
             "welcome"
         );
+
 
     if (currentWelcome) {
 
@@ -899,41 +1448,30 @@ function loadHistory() {
     }
 
 
-    history.forEach(item => {
+    history.forEach(
+        item => {
 
-        const message =
-            document.createElement(
-                "div"
+
+            const message =
+                document.createElement(
+                    "div"
+                );
+
+
+            message.className =
+
+                item.role === "user"
+
+                    ? "message user"
+
+                    : "message ai";
+
+            message.textContent =
+                item.content;
+
+
+            chat.appendChild(
+                message
             );
 
-        message.className =
-            item.role === "user"
-                ? "message user"
-                : "message ai";
-
-        message.textContent =
-            item.content;
-
-        chat.appendChild(message);
-
-    });
-
-
-    chat.scrollTop =
-        chat.scrollHeight;
-
-}
-
-
-/* =========================
-   START
-========================= */
-
-loadModels();
-
-loadHistory();
-
-    </script>
-
-</body>
-</html>
+    
