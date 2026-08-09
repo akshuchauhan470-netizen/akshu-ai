@@ -5,24 +5,32 @@ const cors = require("cors");
 
 const app = express();
 
-/* =========================
-   BASIC SETUP
-========================= */
-
 app.use(cors());
-
 app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
+const API_KEY = process.env.OPENROUTER_API_KEY;
+
+const OPENROUTER_URL =
+    "https://openrouter.ai/api/v1/chat/completions";
+
+const MODELS_URL =
+    "https://openrouter.ai/api/v1/models";
+
 
 /* =========================
    HOME
 ========================= */
 
 app.get("/", (req, res) => {
+
     res.json({
         status: "online",
         message: "Akshu AI Backend is running 🚀"
     });
+
 });
+
 
 /* =========================
    MODELS
@@ -33,29 +41,33 @@ app.get("/api/models", async (req, res) => {
     try {
 
         const response = await fetch(
-            "https://openrouter.ai/api/v1/models"
+            MODELS_URL
         );
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
         if (!response.ok) {
 
-            return res.status(response.status).json({
+            return res.status(
+                response.status
+            ).json({
                 error:
-                    data.error?.message ||
+                    data?.error?.message ||
                     "Could not load models"
             });
 
         }
 
-        const models = (data.data || [])
-            .filter(model => model.id)
-            .map(model => ({
-                id: model.id,
-                name:
-                    model.name ||
-                    model.id
-            }));
+        const models =
+            (data.data || [])
+                .filter(model => model.id)
+                .map(model => ({
+                    id: model.id,
+                    name:
+                        model.name ||
+                        model.id
+                }));
 
         res.json(models);
 
@@ -71,231 +83,285 @@ app.get("/api/models", async (req, res) => {
                 error.message ||
                 "Could not load models"
         });
+
     }
 
 });
 
+
 /* =========================
-   AI CHAT
+   GET FREE MODELS
 ========================= */
 
-app.post("/api/chat", async (req, res) => {
+async function getFreeModels() {
 
     try {
 
-        const {
-            message,
-            model
-        } = req.body;
-
-
-        /* CHECK MESSAGE */
-
-        if (
-            !message ||
-            typeof message !== "string" ||
-            !message.trim()
-        ) {
-
-            return res.status(400).json({
-                error: "Message is required"
-            });
-
-        }
-
-
-        /* CHECK API KEY */
-
-        const apiKey =
-            process.env.OPENROUTER_API_KEY;
-
-
-        if (!apiKey) {
-
-            console.error(
-                "OPENROUTER_API_KEY is missing"
-            );
-
-            return res.status(500).json({
-                error:
-                    "OPENROUTER_API_KEY is missing"
-            });
-
-        }
-
-
-        /* MODEL */
-
-        const selectedModel =
-            model ||
-            "openrouter/free";
-
-
-        console.log(
-            "AI REQUEST:",
-            selectedModel
-        );
-
-
-        /* OPENROUTER REQUEST */
-
         const response =
             await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-
-                    method: "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "application/json",
-
-                        "Authorization":
-                            `Bearer ${apiKey}`,
-
-                        "HTTP-Referer":
-                            "https://akshu-ai.onrender.com",
-
-                        "X-Title":
-                            "Akshu AI"
-
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            model:
-                                selectedModel,
-
-                            messages: [
-
-                                {
-                                    role:
-                                        "system",
-
-                                    content:
-                                        "You are Akshu AI. Always answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate and English words where they sound natural. Keep answers clear, friendly and easy to understand."
-                                },
-
-                                {
-                                    role:
-                                        "user",
-
-                                    content:
-                                        message.trim()
-                                }
-
-                            ]
-
-                        })
-
-                }
+                MODELS_URL
             );
-
-
-        /* GET RESPONSE */
 
         const data =
             await response.json();
 
-
-        console.log(
-            "OPENROUTER STATUS:",
-            response.status
-        );
-
-
-        /* OPENROUTER ERROR */
-
         if (!response.ok) {
-
-            console.error(
-                "OPENROUTER ERROR:",
-                data
-            );
-
-            return res
-                .status(response.status)
-                .json({
-
-                    error:
-                        data?.error?.message ||
-                        data?.error ||
-                        "OpenRouter request failed"
-
-                });
-
+            return [];
         }
 
+        return (data.data || [])
+            .filter(model => {
 
-        /* GET AI REPLY */
+                const id =
+                    String(model.id || "")
+                        .toLowerCase();
 
-        const reply =
-            data?.choices?.[0]?.message?.content;
+                const pricing =
+                    model.pricing || {};
 
+                const promptPrice =
+                    Number(
+                        pricing.prompt || 0
+                    );
 
-        if (!reply) {
+                const completionPrice =
+                    Number(
+                        pricing.completion || 0
+                    );
 
-            console.error(
-                "NO AI REPLY:",
-                data
-            );
+                return (
+                    id.includes(":free") ||
+                    (
+                        promptPrice === 0 &&
+                        completionPrice === 0
+                    )
+                );
 
-            return res.status(500).json({
-
-                error:
-                    "AI returned no response"
-
-            });
-
-        }
-
-
-        /* SUCCESS */
-
-        return res.json({
-
-            reply: reply
-
-        });
-
+            })
+            .map(model => model.id)
+            .filter(Boolean);
 
     } catch (error) {
 
         console.error(
-            "CHAT ERROR:",
+            "FREE MODEL ERROR:",
             error
         );
 
-        return res.status(500).json({
-
-            error:
-                error.message ||
-                "AI connection failed"
-
-        });
+        return [];
 
     }
 
-});
+}
 
 
 /* =========================
-   START SERVER
+   ASK OPENROUTER
 ========================= */
 
-const PORT =
-    process.env.PORT || 3000;
+async function askAI(
+    model,
+    message
+) {
 
+    console.log(
+        "Trying model:",
+        model
+    );
 
-app.listen(
-    PORT,
-    () => {
+    const response =
+        await fetch(
+            OPENROUTER_URL,
+            {
 
-        console.log(
-            `Akshu AI Backend running on port ${PORT}`
+                method: "POST",
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json",
+
+                    "Authorization":
+                        `Bearer ${API_KEY}`,
+
+                    "HTTP-Referer":
+                        "https://akshu-ai.onrender.com",
+
+                    "X-Title":
+                        "Akshu AI"
+
+                },
+
+                body:
+                    JSON.stringify({
+
+                        model: model,
+
+                        messages: [
+
+                            {
+                                role:
+                                    "system",
+
+                                content:
+                                    "You are Akshu AI. Answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate. Keep answers clear, friendly and easy to understand."
+                            },
+
+                            {
+                                role:
+                                    "user",
+
+                                content:
+                                    message
+                            }
+
+                        ]
+
+                    })
+
+            }
         );
 
-    }
-);
+
+    const data =
+        await response.json();
+
+
+    return {
+        response,
+        data
+    };
+
+}
+
+
+/* =========================
+   CHAT
+========================= */
+
+app.post(
+    "/api/chat",
+    async (req, res) => {
+
+        try {
+
+            const {
+                message,
+                model
+            } = req.body;
+
+
+            /* MESSAGE CHECK */
+
+            if (
+                !message ||
+                typeof message !== "string"
+            ) {
+
+                return res.status(400).json({
+                    error:
+                        "Message is required"
+                });
+
+            }
+
+
+            /* API KEY CHECK */
+
+            if (!API_KEY) {
+
+                return res.status(500).json({
+                    error:
+                        "OPENROUTER_API_KEY is missing"
+                });
+
+            }
+
+
+            /*
+             * FIRST TRY:
+             * USER SELECTED MODEL
+             */
+
+            const modelsToTry = [];
+
+
+            if (model) {
+
+                modelsToTry.push(
+                    model
+                );
+
+            }
+
+
+            /*
+             * SECOND:
+             * OPENROUTER FREE ROUTER
+             */
+
+            if (
+                !modelsToTry.includes(
+                    "openrouter/free"
+                )
+            ) {
+
+                modelsToTry.push(
+                    "openrouter/free"
+                );
+
+            }
+
+
+            /*
+             * THIRD:
+             * OTHER FREE MODELS
+             */
+
+            const freeModels =
+                await getFreeModels();
+
+
+            for (
+                const freeModel
+                of freeModels
+            ) {
+
+                if (
+                    !modelsToTry.includes(
+                        freeModel
+                    )
+                ) {
+
+                    modelsToTry.push(
+                        freeModel
+                    );
+
+                }
+
+            }
+
+
+            console.log(
+                "Models to try:",
+                modelsToTry
+            );
+
+
+            /* =========================
+               TRY MODELS ONE BY ONE
+            ========================= */
+
+            let lastError =
+                "AI request failed";
+
+
+            for (
+                const currentModel
+                of modelsToTry
+            ) {
+
+                try {
+
+                    const result =
+                        await askAI
