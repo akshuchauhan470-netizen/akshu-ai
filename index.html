@@ -365,42 +365,61 @@ select {
 </main>
 <!-- INPUT -->
 <div class="input-area">
-  <div class="input-box">
+  <div class="input-area">
+    <div class="input-box">
 
-    <input
-        id="messageInput"<input
-    type="file"
-    id="fileInput"
-    accept="image/png,image/jpeg,image/webp,application/pdf,text/plain"
-    hidden
->
+        <!-- PHOTO / FILE BUTTON -->
+        <input
+            type="file"
+            id="fileInput"
+            accept="image/png,image/jpeg,image/webp,application/pdf,text/plain"
+            hidden
+        >
 
-<button
-    id="fileBtn"
-    type="button"
-    title="Photo or File"
->
-    📎
-      </button>
-        type="text"
-        placeholder="Message Akshu AI..."
-        autocomplete="off"
-    >
+        <button
+            id="fileBtn"
+            type="button"
+            title="Photo or File"
+        >
+            📎
+        </button>
 
-    <button id="sendBtn" type="button">
-        ➤
-    </button>
+        <!-- MESSAGE INPUT -->
+        <input
+            id="messageInput"
+            type="text"
+            placeholder="Message Akshu AI..."
+            autocomplete="off"
+        >
 
-    <button id="voiceBtn" type="button">
-        🎙️
-    </button>
+        <!-- SEND -->
+        <button
+            id="sendBtn"
+            type="button"
+            title="Send"
+        >
+            ➤
+        </button>
 
-    <button id="stopBtn" type="button">
-        ■
-    </button>
+        <!-- MIC -->
+        <button
+            id="voiceBtn"
+            type="button"
+            title="Voice input"
+        >
+            🎙️
+        </button>
 
-</div>
+        <!-- STOP -->
+        <button
+            id="stopBtn"
+            type="button"
+            title="Stop"
+        >
+            ■
+        </button>
 
+    </div>
 </div>
 <script>
 
