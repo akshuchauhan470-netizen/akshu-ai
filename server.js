@@ -5,11 +5,13 @@ const cors = require("cors");
 
 const app = express();
 
+/* =========================
+   BASIC SETUP
+========================= */
+
 app.use(cors());
+
 app.use(express.json());
-
-const PORT = process.env.PORT || 3000;
-
 
 /* =========================
    HOME
@@ -22,7 +24,6 @@ app.get("/", (req, res) => {
     });
 });
 
-
 /* =========================
    MODELS
 ========================= */
@@ -31,34 +32,24 @@ app.get("/api/models", async (req, res) => {
 
     try {
 
-        if (!process.env.OPENROUTER_API_KEY) {
-            return res.status(500).json({
-                error: "OPENROUTER_API_KEY is missing"
-            });
-        }
-
         const response = await fetch(
-            "https://openrouter.ai/api/v1/models",
-            {
-                headers: {
-                    "Authorization":
-                        `Bearer ${process.env.OPENROUTER_API_KEY}`
-                }
-            }
+            "https://openrouter.ai/api/v1/models"
         );
 
         const data = await response.json();
 
         if (!response.ok) {
+
             return res.status(response.status).json({
                 error:
                     data.error?.message ||
                     "Could not load models"
             });
+
         }
 
         const models = (data.data || [])
-            .slice(0, 50)
+            .filter(model => model.id)
             .map(model => ({
                 id: model.id,
                 name:
@@ -71,51 +62,82 @@ app.get("/api/models", async (req, res) => {
     } catch (error) {
 
         console.error(
-            "Models error:",
+            "MODELS ERROR:",
             error
         );
 
         res.status(500).json({
-            error: "Could not load models"
+            error:
+                error.message ||
+                "Could not load models"
         });
-
     }
 
 });
 
-
 /* =========================
-   CHAT
+   AI CHAT
 ========================= */
 
 app.post("/api/chat", async (req, res) => {
 
-    const {
-        message,
-        model
-    } = req.body;
-
-
-    if (!message) {
-
-        return res.status(400).json({
-            error: "Message is required"
-        });
-
-    }
-
-
-    if (!process.env.OPENROUTER_API_KEY) {
-
-        return res.status(500).json({
-            error:
-                "OPENROUTER_API_KEY is missing"
-        });
-
-    }
-
-
     try {
+
+        const {
+            message,
+            model
+        } = req.body;
+
+
+        /* CHECK MESSAGE */
+
+        if (
+            !message ||
+            typeof message !== "string" ||
+            !message.trim()
+        ) {
+
+            return res.status(400).json({
+                error: "Message is required"
+            });
+
+        }
+
+
+        /* CHECK API KEY */
+
+        const apiKey =
+            process.env.OPENROUTER_API_KEY;
+
+
+        if (!apiKey) {
+
+            console.error(
+                "OPENROUTER_API_KEY is missing"
+            );
+
+            return res.status(500).json({
+                error:
+                    "OPENROUTER_API_KEY is missing"
+            });
+
+        }
+
+
+        /* MODEL */
+
+        const selectedModel =
+            model ||
+            "openrouter/free";
+
+
+        console.log(
+            "AI REQUEST:",
+            selectedModel
+        );
+
+
+        /* OPENROUTER REQUEST */
 
         const response =
             await fetch(
@@ -130,10 +152,10 @@ app.post("/api/chat", async (req, res) => {
                             "application/json",
 
                         "Authorization":
-                            `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                            `Bearer ${apiKey}`,
 
                         "HTTP-Referer":
-                            "https://akshuchauhan470-netizen.github.io/akshu-ai/",
+                            "https://akshu-ai.onrender.com",
 
                         "X-Title":
                             "Akshu AI"
@@ -144,8 +166,7 @@ app.post("/api/chat", async (req, res) => {
                         JSON.stringify({
 
                             model:
-                                model ||
-                                "openrouter/free",
+                                selectedModel,
 
                             messages: [
 
@@ -154,7 +175,7 @@ app.post("/api/chat", async (req, res) => {
                                         "system",
 
                                     content:
-                                        "You are Akshu AI. Answer naturally in Hinglish. Use Hindi in Devanagari and English words naturally. Keep answers clear, friendly and easy to understand."
+                                        "You are Akshu AI. Always answer naturally in Hinglish, mixing Hindi and English. Use Devanagari Hindi where appropriate and English words where they sound natural. Keep answers clear, friendly and easy to understand."
                                 },
 
                                 {
@@ -162,7 +183,7 @@ app.post("/api/chat", async (req, res) => {
                                         "user",
 
                                     content:
-                                        message
+                                        message.trim()
                                 }
 
                             ]
@@ -173,61 +194,86 @@ app.post("/api/chat", async (req, res) => {
             );
 
 
+        /* GET RESPONSE */
+
         const data =
             await response.json();
 
 
+        console.log(
+            "OPENROUTER STATUS:",
+            response.status
+        );
+
+
+        /* OPENROUTER ERROR */
+
         if (!response.ok) {
 
             console.error(
-                "OpenRouter error:",
+                "OPENROUTER ERROR:",
                 data
             );
 
-            return res.status(
-                response.status
-            ).json({
+            return res
+                .status(response.status)
+                .json({
 
-                error:
-                    data.error?.message ||
-                    "AI request failed"
+                    error:
+                        data?.error?.message ||
+                        data?.error ||
+                        "OpenRouter request failed"
 
-            });
+                });
 
         }
 
 
+        /* GET AI REPLY */
+
         const reply =
-            data
-                .choices?.[0]
-                ?.message?.content;
+            data?.choices?.[0]?.message?.content;
 
 
         if (!reply) {
 
+            console.error(
+                "NO AI REPLY:",
+                data
+            );
+
             return res.status(500).json({
+
                 error:
-                    "AI ने कोई जवाब नहीं दिया।"
+                    "AI returned no response"
+
             });
 
         }
 
 
-        res.json({
+        /* SUCCESS */
+
+        return res.json({
+
             reply: reply
+
         });
 
 
     } catch (error) {
 
         console.error(
-            "Chat error:",
+            "CHAT ERROR:",
             error
         );
 
-        res.status(500).json({
+        return res.status(500).json({
+
             error:
+                error.message ||
                 "AI connection failed"
+
         });
 
     }
@@ -239,13 +285,16 @@ app.post("/api/chat", async (req, res) => {
    START SERVER
 ========================= */
 
+const PORT =
+    process.env.PORT || 3000;
+
+
 app.listen(
     PORT,
-    "0.0.0.0",
     () => {
 
         console.log(
-            `Akshu AI running on port ${PORT}`
+            `Akshu AI Backend running on port ${PORT}`
         );
 
     }
