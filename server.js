@@ -6,61 +6,70 @@ require("dotenv").config();
 const app = express();
 
 const PORT = process.env.PORT || 10000;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const API_KEY = process.env.OPENROUTER_API_KEY;
 
-// ===============================
+const OPENROUTER_URL =
+    "https://openrouter.ai/api/v1/chat/completions";
+
+// ==========================================
 // MIDDLEWARE
-// ===============================
+// ==========================================
 
 app.use(cors());
 
 app.use(
     express.json({
-        limit: "15mb"
+        limit: "20mb"
     })
 );
 
 app.use(
     express.urlencoded({
         extended: true,
-        limit: "15mb"
+        limit: "20mb"
     })
 );
 
-// ===============================
+// ==========================================
 // FRONTEND
-// ===============================
+// ==========================================
+
+const publicPath = path.join(
+    __dirname,
+    "public"
+);
 
 app.use(
-    express.static(
-        path.join(__dirname, "public")
-    )
+    express.static(publicPath)
 );
 
 app.get("/", (req, res) => {
+
     res.sendFile(
         path.join(
-            __dirname,
-            "public",
+            publicPath,
             "index.html"
         )
     );
+
 });
 
-// ===============================
-// HEALTH CHECK
-// ===============================
+// ==========================================
+// HEALTH
+// ==========================================
 
 app.get("/api/health", (req, res) => {
+
     res.json({
-        ok: true,
+        success: true,
         message: "Akshu AI server is running"
     });
+
 });
 
-// ===============================
-// MODELS
-// ===============================
+// ==========================================
+// LOAD MODELS
+// ==========================================
 
 app.get("/api/models", async (req, res) => {
 
@@ -70,104 +79,144 @@ app.get("/api/models", async (req, res) => {
             "https://openrouter.ai/api/v1/models"
         );
 
+        const data =
+            await response.json();
+
         if (!response.ok) {
-            throw new Error(
-                `OpenRouter models error: ${response.status}`
-            );
-        }
 
-        const data = await response.json();
-
-        const models = Array.isArray(data.data)
-            ? data.data
-            : [];
-
-        // Text + vision models
-        const usefulModels = models
-            .filter(model => {
-
-                const modalities =
-                    model.architecture?.input_modalities ||
-                    [];
-
-                return modalities.includes("text");
-
-            })
-            .map(model => {
-
-                const modalities =
-                    model.architecture?.input_modalities ||
-                    [];
-
-                const hasImage =
-                    modalities.includes("image");
-
-                return {
-                    id: model.id,
-                    name:
-                        model.name ||
-                        model.id,
-                    supportsImage:
-                        hasImage
-                };
-
-            })
-            .sort((a, b) => {
-
-                // Vision models first
-                if (
-                    a.supportsImage &&
-                    !b.supportsImage
-                ) {
-                    return -1;
-                }
-
-                if (
-                    !a.supportsImage &&
-                    b.supportsImage
-                ) {
-                    return 1;
-                }
-
-                return a.name.localeCompare(
-                    b.name
-                );
-
+            return res.status(
+                response.status
+            ).json({
+                error:
+                    data?.error?.message ||
+                    "Could not load models"
             });
 
-        res.json(usefulModels);
+        }
+
+        const models =
+            Array.isArray(data.data)
+                ? data.data
+                : [];
+
+        const result =
+            models
+                .filter(model => {
+
+                    const input =
+                        model.architecture
+                            ?.input_modalities || [];
+
+                    return input.includes("text");
+
+                })
+                .map(model => {
+
+                    const input =
+                        model.architecture
+                            ?.input_modalities || [];
+
+                    return {
+
+                        id: model.id,
+
+                        name:
+                            model.name ||
+                            model.id,
+
+                        supportsImage:
+                            input.includes(
+                                "image"
+                            )
+
+                    };
+
+                })
+                .sort((a, b) => {
+
+                    if (
+                        a.supportsImage &&
+                        !b.supportsImage
+                    ) {
+                        return -1;
+                    }
+
+                    if (
+                        !a.supportsImage &&
+                        b.supportsImage
+                    ) {
+                        return 1;
+                    }
+
+                    return a.name.localeCompare(
+                        b.name
+                    );
+
+                });
+
+        // Always keep free router available
+        result.unshift({
+            id: "openrouter/free",
+            name: "Free AI",
+            supportsImage: true
+        });
+
+        // Remove duplicate model IDs
+        const unique =
+            result.filter(
+                (model, index, array) =>
+                    index ===
+                    array.findIndex(
+                        item =>
+                            item.id ===
+                            model.id
+                    )
+            );
+
+        res.json(unique);
 
     } catch (error) {
 
         console.error(
-            "Models error:",
+            "MODEL ERROR:",
             error
         );
 
         res.status(500).json({
-            error: "Could not load models"
+            error:
+                "Could not load AI models"
         });
 
     }
 
 });
 
-// ===============================
+// ==========================================
 // CHAT
-// ===============================
+// ==========================================
 
 app.post("/api/chat", async (req, res) => {
 
     try {
 
-        if (!OPENROUTER_API_KEY) {
+        // ----------------------------------
+        // API KEY CHECK
+        // ----------------------------------
+
+        if (!API_KEY) {
 
             return res.status(500).json({
+
                 error:
                     "OPENROUTER_API_KEY is missing in Render Environment Variables."
+
             });
 
         }
+
+        // ----------------------------------
+        // REQUEST DATA
+        // ----------------------------------
 
         const {
             message,
@@ -178,137 +227,147 @@ app.post("/api/chat", async (req, res) => {
             fileType
         } = req.body || {};
 
-        const userMessage =
+        const text =
             typeof message === "string"
                 ? message.trim()
                 : "";
 
-        // --------------------------------
-        // IMAGE DATA
-        // --------------------------------
+        // ----------------------------------
+        // FIND IMAGE
+        // ----------------------------------
 
-        let imageUrl = null;
+        let imageValue =
+            image ||
+            imageData ||
+            null;
 
-        if (image) {
-            imageUrl = image;
-        }
-
-        if (
-            !imageUrl &&
-            imageData
-        ) {
-            imageUrl = imageData;
-        }
-
-        // --------------------------------
-        // DEFAULT TEXT MODEL
-        // --------------------------------
+        // ----------------------------------
+        // MODEL
+        // ----------------------------------
 
         let selectedModel =
             model ||
             "openrouter/free";
 
-        // --------------------------------
-        // IMAGE MODEL
-        // --------------------------------
-        //
-        // Gemma 4 31B is a free multimodal
-        // model on OpenRouter and accepts
-        // text + image input.
-        //
-        // --------------------------------
+        /*
+         * IMPORTANT:
+         *
+         * If an image is attached, ALWAYS
+         * use openrouter/free.
+         *
+         * OpenRouter's free router can select
+         * a free model supporting image input.
+         */
 
-        if (imageUrl) {
+        if (imageValue) {
 
             selectedModel =
-                "google/gemma-4-31b-it:free";
+                "openrouter/free";
 
             console.log(
-                "Image detected."
+                "IMAGE REQUEST"
             );
 
             console.log(
-                "Using vision model:",
+                "Using model:",
                 selectedModel
             );
 
         }
 
-        // --------------------------------
-        // BUILD MESSAGE
-        // --------------------------------
+        // ----------------------------------
+        // MESSAGE CONTENT
+        // ----------------------------------
 
-        let content = [];
+        const content = [];
 
-        if (userMessage) {
+        // Text part
 
-            content.push({
-                type: "text",
-                text: userMessage
-            });
+        content.push({
 
-        } else {
+            type: "text",
 
-            content.push({
-                type: "text",
-                text:
-                    "Please analyze the uploaded file and tell me what it contains."
-            });
+            text:
+                text ||
+                (
+                    imageValue
+                        ? "Please analyze this image and tell me what you see."
+                        : "Hello"
+                )
 
-        }
+        });
 
-        // --------------------------------
-        // IMAGE
-        // --------------------------------
+        // ----------------------------------
+        // IMAGE PART
+        // ----------------------------------
 
-        if (imageUrl) {
+        if (imageValue) {
 
-            let finalImageUrl =
-                imageUrl;
+            let finalImage =
+                String(imageValue);
 
-            // If frontend sends raw base64,
-            // convert it into a data URL.
+            /*
+             * If frontend sends ONLY base64,
+             * convert it to a data URL.
+             */
+
             if (
-                !finalImageUrl.startsWith(
+                !finalImage.startsWith(
                     "data:"
                 ) &&
                 fileType &&
-                fileType.startsWith(
-                    "image/"
-                )
+                String(fileType)
+                    .startsWith("image/")
             ) {
 
-                finalImageUrl =
-                    `data:${fileType};base64,${finalImageUrl}`;
+                finalImage =
+                    `data:${fileType};base64,${finalImage}`;
 
             }
+
+            /*
+             * OpenRouter expects:
+             *
+             * {
+             *   type: "image_url",
+             *   image_url: {
+             *      url: "..."
+             *   }
+             * }
+             */
 
             content.push({
 
                 type: "image_url",
 
                 image_url: {
-                    url:
-                        finalImageUrl
+
+                    url: finalImage
+
                 }
 
             });
 
         }
 
-        // --------------------------------
-        // OPENROUTER REQUEST
-        // --------------------------------
+        // ----------------------------------
+        // REQUEST BODY
+        // ----------------------------------
 
         const requestBody = {
 
             model: selectedModel,
 
             messages: [
+
                 {
+
                     role: "user",
+
                     content: content
+
                 }
+
             ],
 
             temperature: 0.7,
@@ -318,57 +377,72 @@ app.post("/api/chat", async (req, res) => {
         };
 
         console.log(
-            "Sending request to OpenRouter:"
+            "Sending to OpenRouter..."
         );
 
         console.log({
             model: selectedModel,
-            hasImage: Boolean(imageUrl),
+            hasImage:
+                Boolean(imageValue),
             fileName:
-                fileName || null
+                fileName || null,
+            fileType:
+                fileType || null
         });
 
-        const response = await fetch(
-            "https://openrouter.ai/api/v1/chat/completions",
-            {
+        // ----------------------------------
+        // OPENROUTER REQUEST
+        // ----------------------------------
 
-                method: "POST",
+        const response =
+            await fetch(
+                OPENROUTER_URL,
+                {
 
-                headers: {
+                    method: "POST",
 
-                    "Authorization":
-                        `Bearer ${OPENROUTER_API_KEY}`,
+                    headers: {
 
-                    "Content-Type":
-                        "application/json",
+                        "Authorization":
+                            `Bearer ${API_KEY}`,
 
-                    "HTTP-Referer":
-                        "https://akshu-ai.onrender.com",
+                        "Content-Type":
+                            "application/json",
 
-                    "X-Title":
-                        "Akshu AI"
+                        "HTTP-Referer":
+                            "https://akshu-ai.onrender.com",
 
-                },
+                        "X-Title":
+                            "Akshu AI"
 
-                body:
-                    JSON.stringify(
-                        requestBody
-                    )
+                    },
 
-            }
-        );
+                    body:
+                        JSON.stringify(
+                            requestBody
+                        )
+
+                }
+            );
+
+        // ----------------------------------
+        // RESPONSE
+        // ----------------------------------
 
         const data =
             await response.json();
 
-        // --------------------------------
-        // OPENROUTER ERROR
-        // --------------------------------
+        // ----------------------------------
+        // ERROR
+        // ----------------------------------
 
         if (!response.ok) {
 
             console.error(
-                "OpenRouter error:",
+                "OPENROUTER ERROR:"
+            );
+
+            console.error(
                 JSON.stringify(
                     data,
                     null,
@@ -376,42 +450,32 @@ app.post("/api/chat", async (req, res) => {
                 )
             );
 
-            let errorMessage =
-                "AI request failed.";
-
-            if (
-                data?.error?.message
-            ) {
-
-                errorMessage =
-                    data.error.message;
-
-            }
-
             return res.status(
                 response.status
             ).json({
 
                 error:
-                    errorMessage,
+                    data?.error?.message ||
+                    "Provider returned error",
 
                 details:
-                    data?.error || data
+                    data?.error || null
 
             });
 
         }
 
-        // --------------------------------
-        // GET REPLY
-        // --------------------------------
+        // ----------------------------------
+        // GET AI REPLY
+        // ----------------------------------
 
         let reply =
-            data?.choices?.[0]?.message
+            data?.choices?.[0]
+                ?.message
                 ?.content;
 
-        // Some providers can return
-        // structured content.
+        // Some responses can be arrays
+
         if (
             Array.isArray(reply)
         ) {
@@ -443,33 +507,43 @@ app.post("/api/chat", async (req, res) => {
         ) {
 
             reply =
-                "No response received from AI.";
+                "AI did not return a response.";
 
         }
 
-        // --------------------------------
+        reply =
+            reply.trim();
+
+        // ----------------------------------
         // SUCCESS
-        // --------------------------------
+        // ----------------------------------
+
+        console.log(
+            "AI RESPONSE SUCCESS"
+        );
 
         res.json({
 
             success: true,
 
-            reply: reply.trim(),
+            reply: reply,
 
             model:
-                data.model ||
+                data?.model ||
                 selectedModel,
 
             file:
-                imageUrl
+                imageValue
                     ? {
+
                         name:
                             fileName ||
                             null,
+
                         type:
                             fileType ||
                             null
+
                     }
                     : null
 
@@ -478,15 +552,18 @@ app.post("/api/chat", async (req, res) => {
     } catch (error) {
 
         console.error(
-            "Chat server error:",
+            "SERVER ERROR:"
+        );
+
+        console.error(
             error
         );
 
         res.status(500).json({
 
             error:
-                error.message ||
-                "Internal server error."
+                error?.message ||
+                "Internal server error"
 
         });
 
@@ -494,24 +571,24 @@ app.post("/api/chat", async (req, res) => {
 
 });
 
-// ===============================
+// ==========================================
 // 404
-// ===============================
+// ==========================================
 
-app.use(
-    (req, res) => {
+app.use((req, res) => {
 
-        res.status(404).json({
-            error:
-                "API route not found"
-        });
+    res.status(404).json({
 
-    }
-);
+        error:
+            "Route not found"
 
-// ===============================
-// START SERVER
-// ===============================
+    });
+
+});
+
+// ==========================================
+// START
+// ==========================================
 
 app.listen(
     PORT,
