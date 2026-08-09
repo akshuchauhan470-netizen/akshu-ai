@@ -6,27 +6,30 @@ require("dotenv").config();
 const app = express();
 
 const PORT = process.env.PORT || 10000;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-const OPENROUTER_API_KEY =
-    process.env.OPENROUTER_API_KEY;
-
-
-/* =========================
-   MIDDLEWARE
-========================= */
+// ===============================
+// MIDDLEWARE
+// ===============================
 
 app.use(cors());
 
 app.use(
     express.json({
-        limit: "25mb"
+        limit: "15mb"
     })
 );
 
+app.use(
+    express.urlencoded({
+        extended: true,
+        limit: "15mb"
+    })
+);
 
-/* =========================
-   PUBLIC FOLDER
-========================= */
+// ===============================
+// FRONTEND
+// ===============================
 
 app.use(
     express.static(
@@ -34,13 +37,7 @@ app.use(
     )
 );
 
-
-/* =========================
-   HOME
-========================= */
-
 app.get("/", (req, res) => {
-
     res.sendFile(
         path.join(
             __dirname,
@@ -48,78 +45,97 @@ app.get("/", (req, res) => {
             "index.html"
         )
     );
-
 });
 
+// ===============================
+// HEALTH CHECK
+// ===============================
 
-/* =========================
-   MODELS
-========================= */
+app.get("/api/health", (req, res) => {
+    res.json({
+        ok: true,
+        message: "Akshu AI server is running"
+    });
+});
+
+// ===============================
+// MODELS
+// ===============================
 
 app.get("/api/models", async (req, res) => {
 
     try {
 
-        if (!OPENROUTER_API_KEY) {
-
-            return res.status(500).json({
-                error:
-                    "OPENROUTER_API_KEY is missing on Render."
-            });
-
-        }
-
-        const response =
-            await fetch(
-                "https://openrouter.ai/api/v1/models",
-                {
-                    headers: {
-                        "Authorization":
-                            `Bearer ${OPENROUTER_API_KEY}`
-                    }
-                }
-            );
-
-        const data =
-            await response.json();
+        const response = await fetch(
+            "https://openrouter.ai/api/v1/models"
+        );
 
         if (!response.ok) {
-
-            return res.status(
-                response.status
-            ).json({
-                error:
-                    data.error?.message ||
-                    "Could not load models."
-            });
-
+            throw new Error(
+                `OpenRouter models error: ${response.status}`
+            );
         }
 
-        const models =
-            Array.isArray(data.data)
-                ? data.data
-                : [];
+        const data = await response.json();
 
-        const usableModels =
-            models
-                .filter(
-                    model =>
-                        model &&
-                        model.id
-                )
-                .slice(0, 80)
-                .map(
-                    model => ({
-                        id: model.id,
-                        name:
-                            model.name ||
-                            model.id
-                    })
+        const models = Array.isArray(data.data)
+            ? data.data
+            : [];
+
+        // Text + vision models
+        const usefulModels = models
+            .filter(model => {
+
+                const modalities =
+                    model.architecture?.input_modalities ||
+                    [];
+
+                return modalities.includes("text");
+
+            })
+            .map(model => {
+
+                const modalities =
+                    model.architecture?.input_modalities ||
+                    [];
+
+                const hasImage =
+                    modalities.includes("image");
+
+                return {
+                    id: model.id,
+                    name:
+                        model.name ||
+                        model.id,
+                    supportsImage:
+                        hasImage
+                };
+
+            })
+            .sort((a, b) => {
+
+                // Vision models first
+                if (
+                    a.supportsImage &&
+                    !b.supportsImage
+                ) {
+                    return -1;
+                }
+
+                if (
+                    !a.supportsImage &&
+                    b.supportsImage
+                ) {
+                    return 1;
+                }
+
+                return a.name.localeCompare(
+                    b.name
                 );
 
-        res.json(
-            usableModels
-        );
+            });
+
+        res.json(usefulModels);
 
     } catch (error) {
 
@@ -129,18 +145,16 @@ app.get("/api/models", async (req, res) => {
         );
 
         res.status(500).json({
-            error:
-                "Failed to load models."
+            error: "Could not load models"
         });
 
     }
 
 });
 
-
-/* =========================
-   CHAT
-========================= */
+// ===============================
+// CHAT
+// ===============================
 
 app.post("/api/chat", async (req, res) => {
 
@@ -150,7 +164,7 @@ app.post("/api/chat", async (req, res) => {
 
             return res.status(500).json({
                 error:
-                    "OPENROUTER_API_KEY is missing on Render."
+                    "OPENROUTER_API_KEY is missing in Render Environment Variables."
             });
 
         }
@@ -158,476 +172,308 @@ app.post("/api/chat", async (req, res) => {
         const {
             message,
             model,
-            file,
+            image,
+            imageData,
             fileName,
             fileType
-        } = req.body;
+        } = req.body || {};
 
+        const userMessage =
+            typeof message === "string"
+                ? message.trim()
+                : "";
 
-        if (
-            (!message ||
-                !message.trim()) &&
-            !file
-        ) {
+        // --------------------------------
+        // IMAGE DATA
+        // --------------------------------
 
-            return res.status(400).json({
-                error:
-                    "Message or file is required."
-            });
+        let imageUrl = null;
 
+        if (image) {
+            imageUrl = image;
         }
 
+        if (
+            !imageUrl &&
+            imageData
+        ) {
+            imageUrl = imageData;
+        }
 
-        const selectedModel =
+        // --------------------------------
+        // DEFAULT TEXT MODEL
+        // --------------------------------
+
+        let selectedModel =
             model ||
             "openrouter/free";
 
+        // --------------------------------
+        // IMAGE MODEL
+        // --------------------------------
+        //
+        // Gemma 4 31B is a free multimodal
+        // model on OpenRouter and accepts
+        // text + image input.
+        //
+        // --------------------------------
 
-        /*
-         * NORMAL TEXT MESSAGE
-         */
+        if (imageUrl) {
 
-        if (!file) {
+            selectedModel =
+                "google/gemma-4-31b-it:free";
 
-            const response =
-                await fetch(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    {
-                        method: "POST",
+            console.log(
+                "Image detected."
+            );
 
-                        headers: {
-                            "Authorization":
-                                `Bearer ${OPENROUTER_API_KEY}`,
+            console.log(
+                "Using vision model:",
+                selectedModel
+            );
 
-                            "Content-Type":
-                                "application/json",
+        }
 
-                            "HTTP-Referer":
-                                "https://akshu-ai.onrender.com",
+        // --------------------------------
+        // BUILD MESSAGE
+        // --------------------------------
 
-                            "X-Title":
-                                "Akshu AI"
-                        },
+        let content = [];
 
-                        body: JSON.stringify({
+        if (userMessage) {
 
-                            model:
-                                selectedModel,
+            content.push({
+                type: "text",
+                text: userMessage
+            });
 
-                            messages: [
-                                {
-                                    role: "user",
+        } else {
 
-                                    content:
-                                        message ||
-                                        ""
-                                }
-                            ]
+            content.push({
+                type: "text",
+                text:
+                    "Please analyze the uploaded file and tell me what it contains."
+            });
 
-                        })
+        }
 
-                    }
-                );
+        // --------------------------------
+        // IMAGE
+        // --------------------------------
 
+        if (imageUrl) {
 
-            const data =
-                await response.json();
+            let finalImageUrl =
+                imageUrl;
 
+            // If frontend sends raw base64,
+            // convert it into a data URL.
+            if (
+                !finalImageUrl.startsWith(
+                    "data:"
+                ) &&
+                fileType &&
+                fileType.startsWith(
+                    "image/"
+                )
+            ) {
 
-            if (!response.ok) {
-
-                console.error(
-                    "OpenRouter error:",
-                    data
-                );
-
-                return res.status(
-                    response.status
-                ).json({
-
-                    error:
-                        data.error?.message ||
-                        "OpenRouter request failed."
-
-                });
+                finalImageUrl =
+                    `data:${fileType};base64,${finalImageUrl}`;
 
             }
 
+            content.push({
 
-            const reply =
-                data.choices?.[0]?.message?.content ||
-                "No response received.";
+                type: "image_url",
 
-            return res.json({
-                reply
-            });
-
-        }
-
-
-        /*
-         * FILE CHECK
-         */
-
-        if (
-            typeof file !== "string" ||
-            !file.startsWith("data:")
-        ) {
-
-            return res.status(400).json({
-                error:
-                    "Invalid file data."
-            });
-
-        }
-
-
-        /*
-         * IMAGE
-         */
-
-        if (
-            fileType === "image/png" ||
-            fileType === "image/jpeg" ||
-            fileType === "image/webp"
-        ) {
-
-            const content = [
-
-                {
-                    type: "text",
-
-                    text:
-                        message ||
-                        "Please analyze this image and explain what you see."
-                },
-
-                {
-                    type: "image_url",
-
-                    image_url: {
-                        url: file
-                    }
-
+                image_url: {
+                    url:
+                        finalImageUrl
                 }
 
-            ];
-
-
-            const response =
-                await fetch(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Authorization":
-                                `Bearer ${OPENROUTER_API_KEY}`,
-
-                            "Content-Type":
-                                "application/json",
-
-                            "HTTP-Referer":
-                                "https://akshu-ai.onrender.com",
-
-                            "X-Title":
-                                "Akshu AI"
-                        },
-
-                        body: JSON.stringify({
-
-                            model:
-                                selectedModel,
-
-                            messages: [
-                                {
-                                    role: "user",
-                                    content
-                                }
-                            ]
-
-                        })
-
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                console.error(
-                    "Image OpenRouter error:",
-                    data
-                );
-
-                return res.status(
-                    response.status
-                ).json({
-
-                    error:
-                        data.error?.message ||
-                        "Selected model does not support image input."
-
-                });
-
-            }
-
-
-            const reply =
-                data.choices?.[0]?.message?.content ||
-                "I could not analyze the image.";
-
-            return res.json({
-                reply
             });
 
         }
 
+        // --------------------------------
+        // OPENROUTER REQUEST
+        // --------------------------------
 
-        /*
-         * TEXT FILE
-         */
+        const requestBody = {
 
-        if (fileType === "text/plain") {
+            model: selectedModel,
 
-            try {
-
-                const base64 =
-                    file.split(",")[1];
-
-                const text =
-                    Buffer
-                        .from(
-                            base64,
-                            "base64"
-                        )
-                        .toString("utf8");
-
-
-                const prompt =
-
-                    (
-                        message
-                            ? message + "\n\n"
-                            : ""
-                    ) +
-
-                    "The user attached a text file named " +
-                    (fileName || "file.txt") +
-                    ". Analyze the file and answer the user's request.\n\n" +
-
-                    "FILE CONTENT:\n" +
-                    text;
-
-
-                const response =
-                    await fetch(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Authorization":
-                                    `Bearer ${OPENROUTER_API_KEY}`,
-
-                                "Content-Type":
-                                    "application/json",
-
-                                "HTTP-Referer":
-                                    "https://akshu-ai.onrender.com",
-
-                                "X-Title":
-                                    "Akshu AI"
-                            },
-
-                            body: JSON.stringify({
-
-                                model:
-                                    selectedModel,
-
-                                messages: [
-                                    {
-                                        role: "user",
-                                        content: prompt
-                                    }
-                                ]
-
-                            })
-
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    return res.status(
-                        response.status
-                    ).json({
-
-                        error:
-                            data.error?.message ||
-                            "Text file request failed."
-
-                    });
-
-                }
-
-
-                const reply =
-                    data.choices?.[0]?.message?.content ||
-                    "I could not read the text file.";
-
-                return res.json({
-                    reply
-                });
-
-            } catch (fileError) {
-
-                console.error(
-                    "Text file error:",
-                    fileError
-                );
-
-                return res.status(400).json({
-                    error:
-                        "Could not read the text file."
-                });
-
-            }
-
-        }
-
-
-        /*
-         * PDF
-         */
-
-        if (fileType === "application/pdf") {
-
-            /*
-             * PDF support depends on the selected
-             * model/provider. We send it using the
-             * OpenRouter file content format.
-             */
-
-            const content = [
-
+            messages: [
                 {
-                    type: "text",
-
-                    text:
-                        message ||
-                        "Please analyze this PDF and summarize or answer questions about it."
-                },
-
-                {
-                    type: "file",
-
-                    file: {
-                        filename:
-                            fileName ||
-                            "document.pdf",
-
-                        file_data:
-                            file
-                    }
-
+                    role: "user",
+                    content: content
                 }
+            ],
 
-            ];
+            temperature: 0.7,
 
+            max_tokens: 2000
 
-            const response =
-                await fetch(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    {
-                        method: "POST",
+        };
 
-                        headers: {
-                            "Authorization":
-                                `Bearer ${OPENROUTER_API_KEY}`,
+        console.log(
+            "Sending request to OpenRouter:"
+        );
 
-                            "Content-Type":
-                                "application/json",
-
-                            "HTTP-Referer":
-                                "https://akshu-ai.onrender.com",
-
-                            "X-Title":
-                                "Akshu AI"
-                        },
-
-                        body: JSON.stringify({
-
-                            model:
-                                selectedModel,
-
-                            messages: [
-                                {
-                                    role: "user",
-                                    content
-                                }
-                            ]
-
-                        })
-
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                console.error(
-                    "PDF OpenRouter error:",
-                    data
-                );
-
-                return res.status(
-                    response.status
-                ).json({
-
-                    error:
-                        data.error?.message ||
-                        "This model/provider cannot read PDF files."
-
-                });
-
-            }
-
-
-            const reply =
-                data.choices?.[0]?.message?.content ||
-                "I could not analyze the PDF.";
-
-            return res.json({
-                reply
-            });
-
-        }
-
-
-        /*
-         * UNSUPPORTED FILE
-         */
-
-        return res.status(400).json({
-
-            error:
-                "This file type is not supported. Please use PNG, JPG, WEBP, PDF, or TXT."
-
+        console.log({
+            model: selectedModel,
+            hasImage: Boolean(imageUrl),
+            fileName:
+                fileName || null
         });
 
+        const response = await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+
+                method: "POST",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${OPENROUTER_API_KEY}`,
+
+                    "Content-Type":
+                        "application/json",
+
+                    "HTTP-Referer":
+                        "https://akshu-ai.onrender.com",
+
+                    "X-Title":
+                        "Akshu AI"
+
+                },
+
+                body:
+                    JSON.stringify(
+                        requestBody
+                    )
+
+            }
+        );
+
+        const data =
+            await response.json();
+
+        // --------------------------------
+        // OPENROUTER ERROR
+        // --------------------------------
+
+        if (!response.ok) {
+
+            console.error(
+                "OpenRouter error:",
+                JSON.stringify(
+                    data,
+                    null,
+                    2
+                )
+            );
+
+            let errorMessage =
+                "AI request failed.";
+
+            if (
+                data?.error?.message
+            ) {
+
+                errorMessage =
+                    data.error.message;
+
+            }
+
+            return res.status(
+                response.status
+            ).json({
+
+                error:
+                    errorMessage,
+
+                details:
+                    data?.error || data
+
+            });
+
+        }
+
+        // --------------------------------
+        // GET REPLY
+        // --------------------------------
+
+        let reply =
+            data?.choices?.[0]?.message
+                ?.content;
+
+        // Some providers can return
+        // structured content.
+        if (
+            Array.isArray(reply)
+        ) {
+
+            reply =
+                reply
+                    .map(item => {
+
+                        if (
+                            typeof item ===
+                            "string"
+                        ) {
+                            return item;
+                        }
+
+                        return (
+                            item?.text ||
+                            ""
+                        );
+
+                    })
+                    .join("");
+
+        }
+
+        if (
+            typeof reply !==
+            "string"
+        ) {
+
+            reply =
+                "No response received from AI.";
+
+        }
+
+        // --------------------------------
+        // SUCCESS
+        // --------------------------------
+
+        res.json({
+
+            success: true,
+
+            reply: reply.trim(),
+
+            model:
+                data.model ||
+                selectedModel,
+
+            file:
+                imageUrl
+                    ? {
+                        name:
+                            fileName ||
+                            null,
+                        type:
+                            fileType ||
+                            null
+                    }
+                    : null
+
+        });
 
     } catch (error) {
 
@@ -640,7 +486,7 @@ app.post("/api/chat", async (req, res) => {
 
             error:
                 error.message ||
-                "Server error."
+                "Internal server error."
 
         });
 
@@ -648,10 +494,24 @@ app.post("/api/chat", async (req, res) => {
 
 });
 
+// ===============================
+// 404
+// ===============================
 
-/* =========================
-   START SERVER
-========================= */
+app.use(
+    (req, res) => {
+
+        res.status(404).json({
+            error:
+                "API route not found"
+        });
+
+    }
+);
+
+// ===============================
+// START SERVER
+// ===============================
 
 app.listen(
     PORT,
