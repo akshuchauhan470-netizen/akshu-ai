@@ -351,6 +351,8 @@ body {
     </div>
 
 </div>
+
+
 <script>
 
 const voiceBtn =
@@ -368,9 +370,6 @@ const stopBtn =
 const chat =
     document.getElementById("chat");
 
-const welcome =
-    document.getElementById("welcome");
-
 const modelSelect =
     document.getElementById("modelSelect");
 
@@ -386,8 +385,12 @@ const closeBtn =
 const newChatBtn =
     document.getElementById("newChatBtn");
 
+let stopTyping = false;
 
-/* VOICE INPUT */
+
+/* =========================
+   VOICE INPUT
+========================= */
 
 const SpeechRecognition =
     window.SpeechRecognition ||
@@ -404,24 +407,35 @@ if (SpeechRecognition && voiceBtn) {
 
     voiceBtn.addEventListener("click", () => {
 
-        recognition.start();
+        try {
+            recognition.start();
 
-        voiceBtn.textContent =
-            "🎙️ सुन रहा हूँ...";
+            voiceBtn.textContent =
+                "🎙️ सुन रहा हूँ...";
+        } catch (error) {
+            console.log(error);
+        }
 
     });
 
     recognition.onresult = (event) => {
 
-        input.value =
+        const spokenText =
             event.results[0][0].transcript;
+
+        input.value = spokenText;
 
         voiceBtn.textContent =
             "🎙️ बोलें";
 
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
+
+        console.log(
+            "Voice error:",
+            event.error
+        );
 
         voiceBtn.textContent =
             "🎙️ बोलें";
@@ -445,56 +459,69 @@ if (SpeechRecognition && voiceBtn) {
 }
 
 
-/* STOP CONTROL */
+/* =========================
+   SIDEBAR
+========================= */
 
-let stopTyping = false;
+if (menuBtn) {
 
+    menuBtn.onclick = () => {
+        sidebar.classList.add("open");
+    };
 
-/* SIDEBAR */
+}
 
-menuBtn.onclick = () => {
+if (closeBtn) {
 
-    sidebar.classList.add("open");
+    closeBtn.onclick = () => {
+        sidebar.classList.remove("open");
+    };
 
-};
-
-closeBtn.onclick = () => {
-
-    sidebar.classList.remove("open");
-
-};
-
-
-/* NEW CHAT */
-
-newChatBtn.onclick = () => {
-
-    chat.innerHTML = `
-        <div class="welcome" id="welcome">
-            <h1>
-                Welcome to <span>Akshu AI</span>
-            </h1>
-
-            <p>
-                Ask anything and get an AI-powered answer.
-            </p>
-        </div>
-    `;
-
-    localStorage.removeItem("akshuChat");
-
-    stopTyping = true;
-
-    stopBtn.classList.remove("active");
-
-    sendBtn.disabled = false;
-
-    sidebar.classList.remove("open");
-
-};
+}
 
 
-/* SEND MESSAGE */
+/* =========================
+   NEW CHAT
+========================= */
+
+if (newChatBtn) {
+
+    newChatBtn.onclick = () => {
+
+        chat.innerHTML = `
+            <div class="welcome" id="welcome">
+                <h1>
+                    Welcome to <span>Akshu AI</span>
+                </h1>
+
+                <p>
+                    Ask anything and get an AI-powered answer.
+                </p>
+            </div>
+        `;
+
+        localStorage.removeItem("akshuChat");
+
+        stopTyping = true;
+
+        if (stopBtn) {
+            stopBtn.classList.remove("active");
+        }
+
+        sendBtn.disabled = false;
+
+        sidebar.classList.remove("open");
+
+        window.speechSynthesis.cancel();
+
+    };
+
+}
+
+
+/* =========================
+   SEND MESSAGE
+========================= */
 
 async function sendMessage() {
 
@@ -506,14 +533,14 @@ async function sendMessage() {
     if (sendBtn.disabled) return;
 
 
+    /* Hide welcome */
+
     const currentWelcome =
         document.getElementById("welcome");
 
     if (currentWelcome) {
-
         currentWelcome.style.display =
             "none";
-
     }
 
 
@@ -539,10 +566,12 @@ async function sendMessage() {
 
     stopTyping = false;
 
-    stopBtn.classList.add("active");
+    if (stopBtn) {
+        stopBtn.classList.add("active");
+    }
 
 
-    /* SAVE USER CHAT */
+    /* SAVE USER MESSAGE */
 
     let history =
         JSON.parse(
@@ -591,9 +620,12 @@ async function sendMessage() {
                     },
 
                     body: JSON.stringify({
+
                         message: text,
+
                         model:
                             modelSelect.value
+
                     })
                 }
             );
@@ -618,7 +650,36 @@ async function sendMessage() {
             "No response received.";
 
 
-        /* TYPING ANIMATION */
+        /* =========================
+           TEXT TO SPEECH
+        ========================= */
+
+        if (
+            "speechSynthesis" in window &&
+            "SpeechSynthesisUtterance" in window
+        ) {
+
+            window.speechSynthesis.cancel();
+
+            const speech =
+                new SpeechSynthesisUtterance(
+                    reply
+                );
+
+            speech.lang = "hi-IN";
+            speech.rate = 1;
+            speech.pitch = 1;
+
+            window.speechSynthesis.speak(
+                speech
+            );
+
+        }
+
+
+        /* =========================
+           TYPING ANIMATION
+        ========================= */
 
         aiMessage.textContent = "";
 
@@ -649,7 +710,7 @@ async function sendMessage() {
         }
 
 
-        /* SAVE AI CHAT */
+        /* SAVE AI MESSAGE */
 
         history.push({
             role: "assistant",
@@ -665,7 +726,10 @@ async function sendMessage() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "AI Error:",
+            error
+        );
 
         if (!stopTyping) {
 
@@ -681,7 +745,9 @@ async function sendMessage() {
 
     sendBtn.disabled = false;
 
-    stopBtn.classList.remove("active");
+    if (stopBtn) {
+        stopBtn.classList.remove("active");
+    }
 
     chat.scrollTop =
         chat.scrollHeight;
@@ -689,34 +755,48 @@ async function sendMessage() {
 }
 
 
-/* STOP BUTTON */
+/* =========================
+   STOP BUTTON
+========================= */
 
-stopBtn.onclick = () => {
+if (stopBtn) {
 
-    stopTyping = true;
+    stopBtn.onclick = () => {
 
-    stopBtn.classList.remove(
-        "active"
-    );
+        stopTyping = true;
 
-    sendBtn.disabled = false;
+        stopBtn.classList.remove(
+            "active"
+        );
 
-};
+        sendBtn.disabled = false;
+
+        window.speechSynthesis.cancel();
+
+    };
+
+}
 
 
-/* SEND BUTTON */
+/* =========================
+   SEND BUTTON
+========================= */
 
 sendBtn.onclick =
     sendMessage;
 
 
-/* ENTER */
+/* =========================
+   ENTER KEY
+========================= */
 
 input.addEventListener(
     "keydown",
     function(event) {
 
         if (event.key === "Enter") {
+
+            event.preventDefault();
 
             sendMessage();
 
@@ -726,7 +806,9 @@ input.addEventListener(
 );
 
 
-/* LOAD MODELS */
+/* =========================
+   LOAD MODELS
+========================= */
 
 async function loadModels() {
 
@@ -785,7 +867,9 @@ async function loadModels() {
 }
 
 
-/* LOAD HISTORY */
+/* =========================
+   LOAD CHAT HISTORY
+========================= */
 
 function loadHistory() {
 
@@ -841,15 +925,15 @@ function loadHistory() {
 }
 
 
-/* START */
+/* =========================
+   START
+========================= */
 
 loadModels();
 
 loadHistory();
 
-</script>
-
-
+    </script>
 
 </body>
 </html>
