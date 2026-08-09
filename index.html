@@ -368,7 +368,20 @@ select {
   <div class="input-box">
 
     <input
-        id="messageInput"
+        id="messageInput"<input
+    type="file"
+    id="fileInput"
+    accept="image/png,image/jpeg,image/webp,application/pdf,text/plain"
+    hidden
+>
+
+<button
+    id="fileBtn"
+    type="button"
+    title="Photo or File"
+>
+    📎
+      </button>
         type="text"
         placeholder="Message Akshu AI..."
         autocomplete="off"
@@ -394,8 +407,33 @@ select {
 /* =========================
    ELEMENTS
 ========================= */
+const fileInput =
+    document.getElementById("fileInput");
 
-const input =
+const fileBtn =
+    document.getElementById("fileBtn");
+
+let selectedFile = null;
+fileBtn.addEventListener("click", () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener("change", () => {
+
+    if (!fileInput.files.length) {
+        return;
+    }
+
+    selectedFile = fileInput.files[0];
+
+    fileBtn.textContent = "📎✓";
+
+    console.log(
+        "Selected file:",
+        selectedFile.name
+    );
+});
+    const input =
     document.getElementById("messageInput");
 
 const sendBtn =
