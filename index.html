@@ -351,51 +351,11 @@ body {
     </div>
 
 </div>
-
-
 <script>
 
-const voiceBtn = document.getElementById("voiceBtn");const voiceBtn = document.getElementById("voiceBtn");
+const voiceBtn =
+    document.getElementById("voiceBtn");
 
-voiceBtn.addEventListener("click", () => {
-    alert("Voice button काम कर रहा है!");
-});
-const input = document.getElementById("messageInput");
-
-const SpeechRecognition =
-    window.SpeechRecognition ||
-    window.webkitSpeechRecognition;
-
-if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = "hi-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    voiceBtn.addEventListener("click", () => {
-        recognition.start();
-        voiceBtn.textContent = "🎙️ सुन रहा हूँ...";
-    });
-
-    recognition.onresult = (event) => {
-        input.value = event.results[0][0].transcript;
-        voiceBtn.textContent = "🎙️ बोलें";
-    };
-
-    recognition.onerror = () => {
-        voiceBtn.textContent = "🎙️ बोलें";
-    };
-
-    recognition.onend = () => {
-        voiceBtn.textContent = "🎙️ बोलें";
-    };
-
-} else {
-    voiceBtn.disabled = true;
-    voiceBtn.textContent = "🎙️ Voice unavailable";
-    }
-    
 const input =
     document.getElementById("messageInput");
 
@@ -427,6 +387,64 @@ const newChatBtn =
     document.getElementById("newChatBtn");
 
 
+/* VOICE INPUT */
+
+const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+if (SpeechRecognition && voiceBtn) {
+
+    const recognition =
+        new SpeechRecognition();
+
+    recognition.lang = "hi-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    voiceBtn.addEventListener("click", () => {
+
+        recognition.start();
+
+        voiceBtn.textContent =
+            "🎙️ सुन रहा हूँ...";
+
+    });
+
+    recognition.onresult = (event) => {
+
+        input.value =
+            event.results[0][0].transcript;
+
+        voiceBtn.textContent =
+            "🎙️ बोलें";
+
+    };
+
+    recognition.onerror = () => {
+
+        voiceBtn.textContent =
+            "🎙️ बोलें";
+
+    };
+
+    recognition.onend = () => {
+
+        voiceBtn.textContent =
+            "🎙️ बोलें";
+
+    };
+
+} else if (voiceBtn) {
+
+    voiceBtn.disabled = true;
+
+    voiceBtn.textContent =
+        "🎙️ Voice unavailable";
+
+}
+
+
 /* STOP CONTROL */
 
 let stopTyping = false;
@@ -435,11 +453,15 @@ let stopTyping = false;
 /* SIDEBAR */
 
 menuBtn.onclick = () => {
+
     sidebar.classList.add("open");
+
 };
 
 closeBtn.onclick = () => {
+
     sidebar.classList.remove("open");
+
 };
 
 
@@ -468,6 +490,7 @@ newChatBtn.onclick = () => {
     sendBtn.disabled = false;
 
     sidebar.classList.remove("open");
+
 };
 
 
@@ -475,17 +498,22 @@ newChatBtn.onclick = () => {
 
 async function sendMessage() {
 
-    const text = input.value.trim();
+    const text =
+        input.value.trim();
 
     if (!text) return;
 
     if (sendBtn.disabled) return;
 
+
     const currentWelcome =
         document.getElementById("welcome");
 
     if (currentWelcome) {
-        currentWelcome.style.display = "none";
+
+        currentWelcome.style.display =
+            "none";
+
     }
 
 
@@ -551,38 +579,54 @@ async function sendMessage() {
 
     try {
 
-const response = await fetch(
-    "https://akshu-ai.onrender.com/api/chat",
-    {
-        method: "POST",
+        const response =
+            await fetch(
+                "https://akshu-ai.onrender.com/api/chat",
+                {
+                    method: "POST",
 
-        headers: {
-            "Content-Type": "application/json"
-        },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-        body: JSON.stringify({
-            message: text,
-            model: modelSelect.value
-        })
-    }
-);
+                    body: JSON.stringify({
+                        message: text,
+                        model:
+                            modelSelect.value
+                    })
+                }
+            );
 
-const data = await response.json();
 
-if (!response.ok) {
-    throw new Error(
-        data.error || "AI request failed"
-    );
-}
+        const data =
+            await response.json();
 
-const reply =
-    data.reply || "No response received.";
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "AI request failed"
+            );
+
+        }
+
+
+        const reply =
+            data.reply ||
+            "No response received.";
+
 
         /* TYPING ANIMATION */
 
         aiMessage.textContent = "";
 
-        for (let i = 0; i < reply.length; i++) {
+        for (
+            let i = 0;
+            i < reply.length;
+            i++
+        ) {
 
             if (stopTyping) {
                 break;
@@ -594,9 +638,14 @@ const reply =
             chat.scrollTop =
                 chat.scrollHeight;
 
-            await new Promise(resolve =>
-                setTimeout(resolve, 15)
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        15
+                    )
             );
+
         }
 
 
@@ -604,7 +653,8 @@ const reply =
 
         history.push({
             role: "assistant",
-            content: aiMessage.textContent
+            content:
+                aiMessage.textContent
         });
 
         localStorage.setItem(
@@ -635,6 +685,7 @@ const reply =
 
     chat.scrollTop =
         chat.scrollHeight;
+
 }
 
 
@@ -644,9 +695,12 @@ stopBtn.onclick = () => {
 
     stopTyping = true;
 
-    stopBtn.classList.remove("active");
+    stopBtn.classList.remove(
+        "active"
+    );
 
     sendBtn.disabled = false;
+
 };
 
 
@@ -687,10 +741,13 @@ async function loadModels() {
             await response.json();
 
 
-        if (!Array.isArray(models) ||
-            models.length === 0) {
+        if (
+            !Array.isArray(models) ||
+            models.length === 0
+        ) {
 
             return;
+
         }
 
 
@@ -700,7 +757,9 @@ async function loadModels() {
         models.forEach(model => {
 
             const option =
-                document.createElement("option");
+                document.createElement(
+                    "option"
+                );
 
             option.value =
                 model.id;
@@ -714,6 +773,7 @@ async function loadModels() {
 
         });
 
+
     } catch (error) {
 
         console.log(
@@ -721,6 +781,7 @@ async function loadModels() {
         );
 
     }
+
 }
 
 
@@ -730,7 +791,9 @@ function loadHistory() {
 
     const history =
         JSON.parse(
-            localStorage.getItem("akshuChat")
+            localStorage.getItem(
+                "akshuChat"
+            )
         ) || [];
 
 
@@ -740,7 +803,9 @@ function loadHistory() {
 
 
     const currentWelcome =
-        document.getElementById("welcome");
+        document.getElementById(
+            "welcome"
+        );
 
     if (currentWelcome) {
 
@@ -753,7 +818,9 @@ function loadHistory() {
     history.forEach(item => {
 
         const message =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         message.className =
             item.role === "user"
@@ -770,6 +837,7 @@ function loadHistory() {
 
     chat.scrollTop =
         chat.scrollHeight;
+
 }
 
 
@@ -780,6 +848,8 @@ loadModels();
 loadHistory();
 
 </script>
+
+
 
 </body>
 </html>
